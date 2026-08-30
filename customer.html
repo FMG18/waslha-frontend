@@ -2,56 +2,223 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>وصلها - تطبيق الزبون</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>تطبيق وصلها - سوريا</title>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: sans-serif; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #f8f9fa; overflow: hidden; }
     #map { width: 100%; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-    .panel { position: absolute; bottom: 30px; right: 20px; left: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10; text-align: center; }
-    button { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+    
+    /* شاشة حظر البلد */
+    #out-of-service {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #ffffff; z-index: 9999; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 20px;
+    }
+    #out-of-service h2 { color: #dc3545; margin-bottom: 10px; }
+    #out-of-service p { color: #6c757d; font-size: 16px; max-width: 300px; }
+
+    /* اللوحة السفلية */
+    .bottom-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0; background: #ffffff;
+      border-top-left-radius: 20px; border-top-right-radius: 20px;
+      padding: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); z-index: 10;
+      transition: transform 0.3s ease-in-out;
+    }
+    
+    .input-group { margin-bottom: 12px; }
+    .input-group label { display: block; font-size: 12px; color: #6c757d; margin-bottom: 4px; font-weight: bold; }
+    .input-group input {
+      width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 10px;
+      font-size: 14px; background: #f8f9fa; outline: none;
+    }
+
+    /* خيارات السيارات */
+    .ride-options { display: flex; gap: 10px; margin: 15px 0; }
+    .ride-card {
+      flex: 1; border: 2px solid #e0e0e0; border-radius: 12px; padding: 10px;
+      text-align: center; cursor: pointer; transition: 0.2s;
+    }
+    .ride-card.selected { border-color: #28a745; background: #e8f5e9; }
+    .ride-card h4 { margin: 5px 0 2px 0; font-size: 14px; }
+    .ride-card p { margin: 0; font-size: 12px; color: #6c757d; }
+
+    /* زر الطلب */
+    .btn-request {
+      width: 100%; padding: 15px; background: #28a745; color: white; border: none;
+      border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    .btn-request:disabled { background: #ccc; box-shadow: none; }
+
+    /* شاشة حالة الرحلة */
+    #trip-status-panel { display: none; text-align: center; }
+    .status-badge { display: inline-block; padding: 6px 16px; background: #e3f2fd; color: #0d6efd; border-radius: 20px; font-weight: bold; font-size: 14px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
+
+  <div id="out-of-service">
+    <h2>الخدمة غير متوفرة</h2>
+    <p>عذراً، تطبيق وصلها لا يعمل حالياً خارج الجمهورية العربية السورية.</p>
+  </div>
+
   <div id="map"></div>
-  <div class="panel">
-    <h3 style="margin-top:0;">طلب كابتن توصيل</h3>
-    <button onclick="requestCaptain()">اطلب الآن (سوريا - دمشق)</button>
+
+  <div class="bottom-sheet" id="booking-panel">
+    <div class="input-group">
+      <label>موقع الانطلاق (سوريا)</label>
+      <input type="text" id="pickup-location" value="جاري تحديد موقعك..." readonly>
+    </div>
+    
+    <div class="input-group">
+      <label>وجهة الوصول</label>
+      <input type="text" id="dropoff-location" placeholder="اضغط على الخريطة لتحديد الوجهة" readonly>
+    </div>
+
+    <div class="ride-options">
+      <div class="ride-card selected" onclick="selectRide('taxi', 1.0, this)">
+        <h4>تكسي</h4>
+        <p id="price-taxi">-- ل.س</p>
+      </div>
+      <div class="ride-card" onclick="selectRide('motorcycle', 0.6, this)">
+        <h4>دراجة نارية</h4>
+        <p id="price-motorcycle">-- ل.س</p>
+      </div>
+      <div class="ride-card" onclick="selectRide('delivery', 0.7, this)">
+        <h4>شحن بري</h4>
+        <p id="price-delivery">-- ل.س</p>
+      </div>
+    </div>
+
+    <button class="btn-request" id="btn-submit" onclick="confirmBooking()" disabled>اختر الوجهة أولاً</button>
+  </div>
+
+  <div class="bottom-sheet" id="trip-status-panel">
+    <div class="status-badge" id="status-text">جاري البحث عن كابتن قريب في سوريا...</div>
+    <h3 id="captain-info" style="margin: 10px 0;">يرجى الانتظار</h3>
+    <p style="color: #6c757d; font-size: 13px;">سنقوم بإعلامك فور قبول الكابتن للطلب</p>
   </div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1Ijoibm9tYWlsODg4ODkyIiwiYSI6ImNtdGZ2YnJ3NzA5eWsyd3BpdWNhaHR1b20ifQ.fBcCDKO-onzZat5QFZSDFw';
-    
+
+    let userLat = null, userLng = null;
+    let destinationLat = null, destinationLng = null;
+    let selectedMultiplier = 1.0;
+    let estimatedDistance = 0;
+    let destinationMarker = null;
+
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [36.2913, 33.5138],
-      zoom: 13
+      center: [36.2913, 33.5138], // دمشق، سوريا افتراضياً
+      zoom: 12
     });
 
-    map.addControl(new mapboxgl.NavigationControl());
+    const socket = io('https://waslha-backend.vercel.app', { transports: ['websocket', 'polling'] });
 
-    const socket = io('https://waslha-backend.vercel.app', {
-      transports: ['websocket', 'polling']
-    }); 
+    // 1. فحص الموقع والنطاق الجغرافي (Geofencing Syria)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
 
-    function requestCaptain() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          const { latitude, longitude } = pos.coords;
-          socket.emit('requestRide', { customerId: 'cust_1', lat: latitude, lng: longitude });
-          alert('تم إرسال طلبك بنجاح!');
-        }, () => {
-          socket.emit('requestRide', { customerId: 'cust_1', lat: 33.5138, lng: 36.2913 });
-          alert('تم إرسال الطلب بإحداثيات موقعك في دمشق!');
-        });
-      } else {
-        socket.emit('requestRide', { customerId: 'cust_1', lat: 33.5138, lng: 36.2913 });
-        alert('تم إرسال الطلب!');
-      }
+        // حدود سوريا الجغرافية الدقيقة (Geofencing Syria Boundaries)
+        const isInsideSyria = (userLat >= 32.3 && userLat <= 37.3 && userLng >= 35.6 && userLng <= 42.4);
+
+        if (!isInsideSyria) {
+          document.getElementById('out-of-service').style.display = 'flex';
+          return;
+        }
+
+        map.flyTo({ center: [userLng, userLat], zoom: 14 });
+        new mapboxgl.Marker({ color: '#28a745' }).setLngLat([userLng, userLat]).addTo(map);
+        document.getElementById('pickup-location').value = "موقعك الحالي في سوريا";
+      }, () => {
+        // في حال رفض الإذن استخدام موقع افتراضي للتجربة (دمشق)
+        userLat = 33.5138; userLng = 36.2913;
+        document.getElementById('pickup-location').value = "دمشق، سوريا (موقع افتراضي)";
+      });
     }
+
+    // 2. تحديد الوجهة عند النقر على الخريطة
+    map.on('click', (e) => {
+      destinationLng = e.lngLat.lng;
+      destinationLat = e.lngLat.lat;
+
+      // التأكد أن الوجهة أيضاً داخل سوريا
+      const isDestInsideSyria = (destinationLat >= 32.3 && destinationLat <= 37.3 && destinationLng >= 35.6 && destinationLng <= 42.4);
+      if(!isDestInsideSyria){
+          alert("لا يمكن اختيار وجهة خارج حدود سوريا!");
+          return;
+      }
+
+      if (destinationMarker) destinationMarker.remove();
+      destinationMarker = new mapboxgl.Marker({ color: '#dc3545' }).setLngLat([destinationLng, destinationLat]).addTo(map);
+
+      document.getElementById('dropoff-location').value = "الوجهة المحددة على الخريطة";
+      
+      calculateFare();
+    });
+
+    // 3. حساب المسافة والسعر بالليرة السورية (تقديري)
+    function calculateFare() {
+      if (!userLat || !destinationLat) return;
+      
+      // حساب المسافة بين نقطتين (Haversine formula)
+      const R = 6371;
+      const dLat = (destinationLat - userLat) * Math.PI / 180;
+      const dLon = (destinationLng - userLng) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(userLat * Math.PI / 180) * Math.cos(destinationLat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+      estimatedDistance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+
+      // أسعار تقديرية بالليرة السورية (مثال للدمج)
+      const baseFare = 5000; // فتحة العداد
+      const pricePerKm = 2000; // 2000 ليرة لكل كم
+
+      const taxiPrice = Math.round((baseFare + (estimatedDistance * pricePerKm)) / 500) * 500;
+      const motorPrice = Math.round((taxiPrice * 0.6) / 500) * 500; // أرخص
+      const deliveryPrice = Math.round((taxiPrice * 0.7) / 500) * 500;
+
+      document.getElementById('price-taxi').innerText = `${taxiPrice.toLocaleString()} ل.س`;
+      document.getElementById('price-motorcycle').innerText = `${motorPrice.toLocaleString()} ل.س`;
+      document.getElementById('price-delivery').innerText = `${deliveryPrice.toLocaleString()} ل.س`;
+
+      document.getElementById('btn-submit').disabled = false;
+      document.getElementById('btn-submit').innerText = 'تأكيد وطلب الرحلة الآن';
+    }
+
+    function selectRide(type, multiplier, element) {
+      document.querySelectorAll('.ride-card').forEach(c => c.classList.remove('selected'));
+      element.classList.add('selected');
+      selectedMultiplier = multiplier;
+    }
+
+    // 4. تأكيد الطلب وإرساله للسيرفر
+    function confirmBooking() {
+      document.getElementById('booking-panel').style.display = 'none';
+      document.getElementById('trip-status-panel').style.display = 'block';
+
+      socket.emit('requestRide', {
+        customerId: 'cust_' + Math.floor(Math.random() * 1000),
+        pickup: { lat: userLat, lng: userLng },
+        dropoff: { lat: destinationLat, lng: destinationLng },
+        distanceKm: estimatedDistance.toFixed(2),
+        country: 'Syria' // تأكيد البلد للسيرفر
+      });
+    }
+
+    // 5. استقبال إشعارات قبول الكابتن
+    socket.on('rideAccepted', (captainData) => {
+      document.getElementById('status-text').innerText = 'تم قبول طلبك في سوريا!';
+      document.getElementById('status-text').style.background = '#d4edda';
+      document.getElementById('status-text').style.color = '#155724';
+      document.getElementById('captain-info').innerText = `الكابتن ${captainData.name} في الطريق إليك`;
+    });
   </script>
 </body>
 </html>
