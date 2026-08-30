@@ -8,97 +8,131 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #f8f9fa; overflow: hidden; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; background: #0f172a; overflow: hidden; }
     #map { width: 100%; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
     
-    /* شريط الحالة العلوي */
-    .top-bar {
-      position: absolute; top: 15px; left: 15px; right: 15px; background: white;
-      padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    /* الشريط العلوي */
+    .header-bar {
+      position: absolute; top: 16px; left: 16px; right: 16px;
+      background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px);
+      padding: 14px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
       display: flex; justify-content: space-between; align-items: center; z-index: 10;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
-    .status-toggle { display: flex; align-items: center; gap: 8px; font-weight: bold; }
-    
-    /* بطاقة استقبال الطلب */
+    .driver-profile { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+    .driver-info h4 { color: #f8fafc; font-size: 15px; margin-bottom: 2px; }
+    .driver-info p { color: #94a3b8; font-size: 12px; }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e;
+      border-radius: 30px; color: #4ade80; font-size: 13px; font-weight: bold;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+    /* بطاقة الإشعار بالطلب الجديد */
     #request-card {
-      display: none; position: absolute; bottom: 20px; left: 20px; right: 20px;
-      background: white; border-radius: 16px; padding: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2); z-index: 20; text-align: center;
-      animation: slideUp 0.3s ease-out;
+      display: none; position: absolute; bottom: 20px; left: 16px; right: 16px;
+      background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px; padding: 20px; color: white;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 20;
+      animation: popup 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes popup { from { opacity: 0; transform: translateY(50px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-    .req-title { color: #28a745; margin-top: 0; font-size: 18px; }
-    .req-details { display: flex; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 15px 0; }
-    .req-details div { font-weight: bold; font-size: 14px; }
+    .req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+    .req-title { color: #4ade80; font-size: 16px; font-weight: bold; }
+    .req-price { color: #fbbf24; font-size: 20px; font-weight: bold; }
 
-    .btn-group { display: flex; gap: 10px; }
-    .btn-accept { flex: 2; padding: 14px; background: #28a745; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
-    .btn-reject { flex: 1; padding: 14px; background: #dc3545; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
+    .req-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .route-point { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #cbd5e1; }
+    .dot-pickup { width: 10px; height: 10px; background: #22c55e; border-radius: 50%; }
+    .dot-dropoff { width: 10px; height: 10px; background: #ef4444; border-radius: 50%; }
+
+    .btn-group { display: flex; gap: 12px; }
+    .btn-accept { flex: 2; padding: 15px; background: #22c55e; color: white; border: none; border-radius: 14px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); }
+    .btn-reject { flex: 1; padding: 15px; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; border-radius: 14px; font-weight: bold; font-size: 15px; cursor: pointer; }
 
     /* بطاقة الرحلة الحالية */
     #active-trip-card {
-      display: none; position: absolute; bottom: 20px; left: 20px; right: 20px;
-      background: #1e293b; color: white; border-radius: 16px; padding: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 20; text-align: center;
+      display: none; position: absolute; bottom: 20px; left: 16px; right: 16px;
+      background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px; padding: 20px; color: white;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 20; text-align: center;
     }
-    .btn-finish { width: 100%; padding: 14px; background: #0d6efd; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .btn-finish { width: 100%; padding: 15px; background: #3b82f6; color: white; border: none; border-radius: 14px; font-weight: bold; font-size: 16px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
   </style>
 </head>
 <body>
 
   <div id="map"></div>
 
-  <!-- الشريط العلوي -->
-  <div class="top-bar">
-    <div class="status-toggle">
-      <span id="status-text" style="color:#28a745;">أونلاين (مستعد للطلبات)</span>
+  <!-- الشريط العلوي الاحترافي -->
+  <div class="header-bar">
+    <div class="driver-profile">
+      <div class="avatar">أ</div>
+      <div class="driver-info">
+        <h4>الكابتن أحمد</h4>
+        <p>تكسي - سوريا</p>
+      </div>
     </div>
-    <div style="font-size:12px; color:#6c757d;">كابتن #101</div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span>متوفر</span>
+    </div>
   </div>
 
-  <!-- بطاقة إشعار الطلب الجديد -->
+  <!-- بطاقة استقبال طلب توصيل جديد -->
   <div id="request-card">
-    <h3 class="req-title">وصلك طلب توصيل جديد! 🚕</h3>
-    <div class="req-details">
-      <div>المسافة: <span id="req-dist">--</span> كم</div>
-      <div>الوجهة: ممر محدد</div>
+    <div class="req-header">
+      <span class="req-title">🚕 طلب توصيل جديد</span>
+      <span class="req-price" id="req-price">12,500 ل.س</span>
+    </div>
+    <div class="req-body">
+      <div class="route-point">
+        <div class="dot-pickup"></div>
+        <span>موقع الانطلاق: <strong id="req-pickup">الزبون بالقرب منك</strong></span>
+      </div>
+      <div class="route-point">
+        <div class="dot-dropoff"></div>
+        <span>المسافة التقديرية: <strong id="req-dist">--</strong> كم</span>
+      </div>
     </div>
     <div class="btn-group">
-      <button class="btn-accept" onclick="acceptTrip()">قبول الطلب</button>
-      <button class="btn-reject" onclick="rejectTrip()">رفض</button>
+      <button class="btn-accept" onclick="acceptTrip()">قبول الطلب الأن</button>
+      <button class="btn-reject" onclick="rejectTrip()">تجاهل</button>
     </div>
   </div>
 
-  <!-- بطاقة متابعة الرحلة الحالية -->
+  <!-- بطاقة الرحلة الحالية -->
   <div id="active-trip-card">
-    <h4 style="margin:0 0 10px 0; color:#4ade80;">الرحلة قيد التنفيذ 📍</h4>
-    <p style="margin: 5px 0; font-size:14px;">يتوجب عليك التوجه إلى موقع الزبون المحدد</p>
-    <button class="btn-finish" onclick="finishTrip()">إنهاء الرحلة بنجاح</button>
+    <h3 style="margin: 0 0 8px 0; color: #4ade80;">الرحلة قيد التنفيذ 📍</h3>
+    <p style="color: #94a3b8; font-size: 14px;">توجه إلى موقع الزبون لاصطحابه إلى الوجهة</p>
+    <button class="btn-finish" onclick="finishTrip()">إنهاء الرحلة واكتمل الطلب</button>
   </div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1Ijoibm9tYWlsODg4ODkyIiwiYSI6ImNtdGZ2YnJ3NzA5eWsyd3BpdWNhaHR1b20ifQ.fBcCDKO-onzZat5QFZSDFw';
 
-    let captainLat = 33.5138, captainLng = 36.2913; // موقع افتراضي (دمشق)
+    let captainLat = 33.5138, captainLng = 36.2913;
     let currentRequest = null;
     let customerMarker = null;
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v11',
+      style: 'mapbox://styles/mapbox/dark-v11', // تصميم الخريطة الداكن الفخم
       center: [captainLng, captainLat],
       zoom: 13
     });
 
-    const captainMarker = new mapboxgl.Marker({ color: '#0d6efd' })
+    const captainMarker = new mapboxgl.Marker({ color: '#3b82f6' })
       .setLngLat([captainLng, captainLat])
       .addTo(map);
 
     const socket = io('https://waslha-backend.vercel.app', { transports: ['websocket', 'polling'] });
 
-    // تحديث موقع الكابتن
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(pos => {
         captainLat = pos.coords.latitude;
@@ -108,23 +142,21 @@
       });
     }
 
-    // استقبال طلب جديد من الزبون
+    // استقبال طلب جديد
     socket.on('newRideRequest', (data) => {
       currentRequest = data;
       document.getElementById('req-dist').innerText = data.distanceKm || '2.5';
       document.getElementById('request-card').style.display = 'block';
 
-      // وضع علامة موقع الزبون على خريطة الكابتن
       if(data.pickup) {
         if(customerMarker) customerMarker.remove();
-        customerMarker = new mapboxgl.Marker({ color: '#dc3545' })
+        customerMarker = new mapboxgl.Marker({ color: '#ef4444' })
           .setLngLat([data.pickup.lng, data.pickup.lat])
           .addTo(map);
         map.flyTo({ center: [data.pickup.lng, data.pickup.lat], zoom: 14 });
       }
     });
 
-    // قبول الرحلة
     function acceptTrip() {
       document.getElementById('request-card').style.display = 'none';
       document.getElementById('active-trip-card').style.display = 'block';
@@ -136,17 +168,15 @@
       });
     }
 
-    // رفض الرحلة
     function rejectTrip() {
       document.getElementById('request-card').style.display = 'none';
       if(customerMarker) customerMarker.remove();
     }
 
-    // إنهاء الرحلة
     function finishTrip() {
       document.getElementById('active-trip-card').style.display = 'none';
       if(customerMarker) customerMarker.remove();
-      alert('تم إنهاء الرحلة بنجاح!');
+      alert('تم إنهاء الرحلة بنجاح واستلام المبلغ!');
     }
   </script>
 </body>
