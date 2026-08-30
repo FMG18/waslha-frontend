@@ -128,12 +128,11 @@
         userLng = pos.coords.longitude;
 
         // حدود سوريا الجغرافية الدقيقة (Geofencing Syria Boundaries)
-        const isInsideSyria = (userLat >= 32.3 && userLat <= 37.3 && userLng >= 35.6 && userLng <= 42.4);
+                // تم تعطيل الحظر مؤقتاً للتجربة والمعاينة
+        map.flyTo({ center: [userLng, userLat], zoom: 14 });
+        new mapboxgl.Marker({ color: '#28a745' }).setLngLat([userLng, userLat]).addTo(map);
+        document.getElementById('pickup-location').value = "موقعك الحالي المحدد دقيقاً";
 
-        if (!isInsideSyria) {
-          document.getElementById('out-of-service').style.display = 'flex';
-          return;
-        }
 
         map.flyTo({ center: [userLng, userLat], zoom: 14 });
         new mapboxgl.Marker({ color: '#28a745' }).setLngLat([userLng, userLat]).addTo(map);
