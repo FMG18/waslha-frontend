@@ -1,22 +1,7 @@
-/* Waslha Mapbox adapter. Set MAPBOX_ACCESS_TOKEN in Vercel or define window.WASLHA_MAPBOX_TOKEN before this script. */
+/* Waslha Mapbox adapter. Public browser token: window.WASLHA_MAPBOX_TOKEN. */
 (function(){
-  const token=window.WASLHA_MAPBOX_TOKEN||window.MAPBOX_ACCESS_TOKEN||'';
-  window.WaslhaMap={
-    async mount(el,opts={}){
-      if(!el)return null;
-      if(!token){el.innerHTML='<div class="map-empty"><b>الخريطة جاهزة</b><span>أضف MAPBOX_ACCESS_TOKEN في Vercel لتفعيل Mapbox.</span></div>';return null}
-      if(!window.mapboxgl){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);const c=document.createElement('link');c.rel='stylesheet';c.href='https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';document.head.appendChild(c)})}
-      mapboxgl.accessToken=token;
-      const center=opts.center||[44.3661,33.3152];
-      const map=new mapboxgl.Map({container:el,style:opts.style||'mapbox://styles/mapbox/streets-v12',center,zoom:opts.zoom||12,attributionControl:true});
-      map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-left');
-      if(opts.locate!==false)map.addControl(new mapboxgl.GeolocateControl({positionOptions:{enableHighAccuracy:true},trackUserLocation:true,showUserHeading:true}),'top-left');
-      const markers=[];
-      const addMarker=(lngLat,type='pickup',popup)=>{const m=new mapboxgl.Marker({color:type==='pickup'?'#111827':'#0f9f6e'}).setLngLat(lngLat);if(popup)m.setPopup(new mapboxgl.Popup({offset:25}).setText(popup));m.addTo(map);markers.push(m);return m};
-      const setPoints=(pickup,dropoff)=>{markers.forEach(m=>m.remove());markers.length=0;if(pickup)addMarker(pickup,'pickup','نقطة الانطلاق');if(dropoff)addMarker(dropoff,'dropoff','الوجهة');if(pickup&&dropoff){const b=new mapboxgl.LngLatBounds(pickup,pickup);b.extend(dropoff);map.fitBounds(b,{padding:70,maxZoom:15,duration:600})}};
-      const setCaptain=(lngLat)=>{if(map._captainMarker)map._captainMarker.setLngLat(lngLat);else map._captainMarker=addMarker(lngLat,'dropoff','موقع الكابتن')};
-      map.on('load',()=>{if(opts.onReady)opts.onReady({map,setPoints,setCaptain,addMarker})});
-      return {map,setPoints,setCaptain,addMarker,destroy:()=>map.remove()};
-    }
-  };
+ const token=window.WASLHA_MAPBOX_TOKEN||window.MAPBOX_ACCESS_TOKEN||'';
+ function coords(id){const lat=Number(document.getElementById(id[0])?.value),lng=Number(document.getElementById(id[1])?.value);return Number.isFinite(lat)&&Number.isFinite(lng)?[lng,lat]:null}
+ async function load(){if(window.mapboxgl)return;if(!token)throw Error('أضف MAPBOX_ACCESS_TOKEN لتفعيل الخريطة');mapboxgl.accessToken=token;await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);const c=document.createElement('link');c.rel='stylesheet';c.href='https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';document.head.appendChild(c)})}
+ window.WaslhaMap={async init(o={}){const el=document.getElementById(o.container);if(!el)return null;if(!token){el.innerHTML='<div class="map-empty"><b>الخريطة جاهزة</b><span>أضف MAPBOX_ACCESS_TOKEN في Vercel لتفعيل Mapbox.</span></div>';return null}try{await load();const map=new mapboxgl.Map({container:el,style:'mapbox://styles/mapbox/streets-v12',center:[44.3661,33.3152],zoom:12});map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-left');map.addControl(new mapboxgl.GeolocateControl({positionOptions:{enableHighAccuracy:true},trackUserLocation:true}),'top-left');let pickupMarker,dropMarker;function setMarkers(){const p=coords([o.pickupLat,o.pickupLng]),d=coords([o.dropLat,o.dropLng]);pickupMarker?.remove();dropMarker?.remove();if(p)pickupMarker=new mapboxgl.Marker({color:'#111827'}).setLngLat(p).setPopup(new mapboxgl.Popup().setText('نقطة الانطلاق')).addTo(map);if(d)dropMarker=new mapboxgl.Marker({color:'#0f9f6e'}).setLngLat(d).setPopup(new mapboxgl.Popup().setText('الوجهة')).addTo(map);if(p&&d){const b=new mapboxgl.LngLatBounds(p,p);b.extend(d);map.fitBounds(b,{padding:60,maxZoom:15})}else if(p)map.flyTo({center:p,zoom:15})}map.on('load',setMarkers);[o.pickupLat,o.pickupLng,o.dropLat,o.dropLng].forEach(id=>document.getElementById(id)?.addEventListener('input',setMarkers));return {map,setMarkers,destroy:()=>map.remove()}}catch(e){el.innerHTML='<div class="map-empty"><b>تعذر تحميل الخريطة</b><span>'+e.message+'</span></div>';return null}}};
 })();
