@@ -12,6 +12,15 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
+    },
+    {
+      "source": "/api/mapbox-token",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
     }
+  ],
+  "rewrites": [
+    { "source": "/api/mapbox-token", "destination": "https://waslha-backend.vercel.app/api/mapbox-token" }
   ]
 }
