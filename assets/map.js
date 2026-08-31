@@ -1,4 +1,5 @@
 /* Waslha Mapbox: real route, tap-to-place points, driver marker and smooth tracking. */
+/* DEBUG DEPLOY TRIGGER: map diagnostics enabled. */
 (function(){
  let accessToken=window.WASLHA_MAPBOX_TOKEN||window.MAPBOX_ACCESS_TOKEN||window.mapboxToken||'';
  const diag=(stage,msg,extra)=>{try{window.WaslhaMapDiagnostic?.({stage,message:String(msg||''),detail:extra?String(extra):''})}catch{}};
