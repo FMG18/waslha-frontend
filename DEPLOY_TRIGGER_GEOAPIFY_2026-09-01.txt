@@ -1,0 +1,1 @@
+Geoapify customer map and ride booking redesign deployment trigger.
