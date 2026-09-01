@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f9f6e">
+<title>وصلها — الرئيسية</title>
+<link rel="stylesheet" href="assets/style.css?v=2026.09.01">
+<link rel="stylesheet" href="assets/home.css?v=2026.09.01">
+</head>
+<body class="home-page">
+<header class="home-nav"><a class="brand" href="home.html">وصلها</a><nav><a href="home.html" class="active">الرئيسية</a><a href="rides.html">رحلاتي</a><a href="profile.html">حسابي</a></nav><button class="icon-btn" id="logoutBtn" type="button" aria-label="تسجيل الخروج">↪</button></header>
+<main class="home-wrap">
+<section class="welcome"><div><span class="eyebrow">أهلاً بك في وصلها</span><h1>وين تريد تروح اليوم؟</h1><p>اختر الخدمة المناسبة لك واحجز مشوارك خلال ثوانٍ.</p></div><button class="location-chip" id="locationBtn" type="button">⌖ موقعي الحالي</button></section>
+<section class="services"><div class="section-head"><h2>اطلب خدمة</h2><span>اختر ما يناسبك</span></div><div class="service-grid">
+<button class="service-card featured" data-service="taxi" type="button"><span class="service-icon">🚕</span><span><b>تاكسي</b><small>مشوار سريع وآمن</small></span><i>←</i></button>
+<button class="service-card" data-service="bike" type="button"><span class="service-icon">🏍️</span><span><b>دراجة</b><small>أسرع داخل المدينة</small></span><i>←</i></button>
+<button class="service-card" data-service="delivery" type="button"><span class="service-icon">📦</span><span><b>توصيل</b><small>وصّل طلبك بسهولة</small></span><i>←</i></button>
+<button class="service-card" data-service="car" type="button"><span class="service-icon">🚗</span><span><b>سيارة خاصة</b><small>راحة وخصوصية</small></span><i>←</i></button>
+</div></section>
+<section class="promo-layout"><div class="discount card-home"><div class="promo-copy"><span class="promo-label">كود خصم</span><h2>عندك كود؟</h2><p>أدخل كود الخصم واحصل على أفضل سعر.</p><div class="coupon-row"><input id="coupon" placeholder="مثال: WASLHA20" autocomplete="off"><button id="couponBtn" type="button">تطبيق</button></div><small id="couponStatus"></small></div><span class="coupon-mark">%</span></div>
+<div class="offers card-home"><div class="section-head"><h2>أفضل العروض</h2><span>لفترة محدودة</span></div><div class="offer"><span class="offer-icon">🎁</span><div><b>خصم على أول رحلة</b><small>استخدم كود WASLHA10</small></div><strong>10%</strong></div><div class="offer"><span class="offer-icon">⚡</span><div><b>رحلات أسرع داخل المدينة</b><small>اطلب الآن واستفد من العرض</small></div><strong>جديد</strong></div></div></section>
+<section class="quick"><div class="section-head"><h2>اختصارات</h2></div><div class="quick-grid"><a href="rides.html">🧾<span>رحلاتي</span></a><a href="profile.html">👤<span>حسابي</span></a><button id="savedBtn" type="button">📍<span>أماكني المحفوظة</span></button><button id="supportBtn" type="button">💬<span>المساعدة</span></button></div></section>
+</main>
+<script src="assets/app.js?v=2026.09.01"></script>
+<script>
+(()=>{const go=s=>{localStorage.setItem('waslha_service',s);location.href='customer.html'};document.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.service)));document.getElementById('couponBtn').onclick=()=>{const i=document.getElementById('coupon'),s=document.getElementById('couponStatus');const v=i.value.trim().toUpperCase();s.textContent=v?'تم حفظ الكود، وسيُطبق عند إنشاء الطلب.':'أدخل كود الخصم أولاً.';if(v)localStorage.setItem('waslha_coupon',v)};document.getElementById('locationBtn').onclick=()=>{if(!navigator.geolocation)return;const b=document.getElementById('locationBtn');b.disabled=true;b.textContent='⌖ جارٍ تحديد موقعك...';navigator.geolocation.getCurrentPosition(p=>{localStorage.setItem('waslha_home_location',JSON.stringify({lat:p.coords.latitude,lng:p.coords.longitude}));b.textContent='✓ تم تحديد موقعي';b.disabled=false},()=>{b.textContent='⌖ تعذر تحديد الموقع';b.disabled=false})};document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('waslha_token');localStorage.removeItem('token');location.href='index.html'};document.getElementById('savedBtn').onclick=()=>location.href='profile.html';document.getElementById('supportBtn').onclick=()=>alert('الدعم والمساعدة ستكون متاحة قريباً.');})();
+</script>
+</body></html>
