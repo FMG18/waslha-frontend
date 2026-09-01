@@ -1,4 +1,4 @@
-/* Waslha Maps v2 — Geoapify + MapLibre, stable pickup/dropoff state machine. */
+/* Waslha Maps v3 — Geoapify + MapLibre with resilient library loading and stable point selection. */
 (function(){
   'use strict';
   let apiKey='';
@@ -13,11 +13,15 @@
   }
   async function loadLib(){
     if(window.maplibregl)return;
-    await new Promise((resolve,reject)=>{
-      if(document.querySelector('script[data-waslha-maplibre]')){const s=document.querySelector('script[data-waslha-maplibre]');s.addEventListener('load',resolve,{once:true});s.addEventListener('error',()=>reject(Error('فشل تحميل MapLibre')),{once:true});return}
-      const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';document.head.appendChild(css);
-      const s=document.createElement('script');s.dataset.waslhaMaplibre='1';s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=resolve;s.onerror=()=>reject(Error('فشل تحميل MapLibre'));document.head.appendChild(s);
-    });
+    if(document.querySelector('link[data-waslha-maplibre-css]')===null){
+      const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';css.dataset.waslhaMaplibreCss='1';document.head.appendChild(css);
+    }
+    const urls=['https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js','https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js'];
+    for(const src of urls){
+      if(window.maplibregl)return;
+      try{await new Promise((resolve,reject)=>{const s=document.createElement('script');s.dataset.waslhaMaplibre='1';s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('load failed'));document.head.appendChild(s)})}catch(e){diag('library','تعذر تحميل MapLibre من المصدر الأول',src)}
+    }
+    if(!window.maplibregl)throw Error('تعذر تحميل مكتبة الخريطة. تحقق من اتصال الإنترنت أو مانع الإعلانات.');
   }
   async function geoReverse(lat,lon){
     const k=await key();const u=`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&lang=ar&limit=1&apiKey=${encodeURIComponent(k)}`;
@@ -41,15 +45,14 @@
       const map=new maplibregl.Map({container:el,style:`https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=${encodeURIComponent(apiKey)}`,center:o.center||[44.3661,33.3152],zoom:o.zoom||12,dragRotate:false,pitchWithRotate:false,attributionControl:true});
       map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
       let pickup=norm(o.pickup),dropoff=norm(o.dropoff),mode=dropoff?'locked':pickup?'dropoff':(o.selectionMode||'pickup');
-      let pm=null,dm=null,driver=null,routeSeq=0;
-      const routeId='waslha-route';
+      let pm=null,dm=null,driver=null,routeSeq=0;const routeId='waslha-route';
       const pin=document.createElement('div');pin.className='waslha-center-pin';pin.innerHTML='<span></span>';el.appendChild(pin);
       const centerPin=show=>pin.style.display=show?'block':'none';
       const marker=(type,p)=>{const x=document.createElement('div');x.className=`waslha-marker ${type}`;x.innerHTML=type==='pickup'?'●':'◆';return new maplibregl.Marker({element:x,anchor:'bottom'}).setLngLat(p).addTo(map)};
       function render(){pm?.remove();dm?.remove();pm=pickup?marker('pickup',pickup):null;dm=dropoff?marker('dropoff',dropoff):null}
       function draw(coords){if(!map.isStyleLoaded())return;const data={type:'Feature',geometry:{type:'LineString',coordinates:coords||[]}};const s=map.getSource(routeId);if(s)s.setData(data);else{map.addSource(routeId,{type:'geojson',data});map.addLayer({id:routeId,type:'line',source:routeId,paint:{'line-color':'#0f9f6e','line-width':6,'line-opacity':.88,'line-cap':'round','line-join':'round'}})}}
-      async function route(){const seq=++routeSeq;if(!pickup||!dropoff){draw([]);o.onRoute?.(null);return null}try{const r=await directions(pickup,dropoff,o.routingMode||'drive');if(seq!==routeSeq)return null;draw(r?.coordinates||[]);o.onRoute?.(r);return r}catch(e){o.onRouteError?.(e);return null}}
-      async function choose(p){p=norm(p);if(!p||mode==='locked')return false;if(mode==='pickup'){pickup=p;dropoff=null;mode='dropoff';render();centerPin(true);o.onMapClick?.(p,'pickup',{pickup,dropoff,mode});o.onSelectionModeChange?.(mode);try{o.onAddress?.('pickup',await geoReverse(p[1],p[0]))}catch{}return true}if(mode==='dropoff'){dropoff=p;mode='locked';render();centerPin(false);o.onMapClick?.(p,'dropoff',{pickup,dropoff,mode});o.onSelectionModeChange?.(mode);try{o.onAddress?.('dropoff',await geoReverse(p[1],p[0]))}catch{}route();return true}return false}
+      async function route(){const seq=++routeSeq;if(!pickup||!dropoff){draw([]);o.onRoute?.(null);return null}try{const r=await directions(pickup,dropoff,o.routingMode||'drive');if(seq!==routeSeq)return null;draw(r?.coordinates||[]);o.onRoute?.(r);return r}catch(e){o.onRouteError?.(e);diag('routing','تعذر حساب الطريق',e.message);return null}}
+      async function choose(p){p=norm(p);if(!p||mode==='locked')return false;if(mode==='pickup'){pickup=p;dropoff=null;mode='dropoff';render();centerPin(true);o.onMapClick?.(p,'pickup',{pickup,dropoff,mode});o.onSelectionModeChange?.(mode);try{o.onAddress?.('pickup',await geoReverse(p[1],p[0]))}catch(e){diag('reverse','تعذر العنوان',e.message)}return true}if(mode==='dropoff'){dropoff=p;mode='locked';render();centerPin(false);o.onMapClick?.(p,'dropoff',{pickup,dropoff,mode});o.onSelectionModeChange?.(mode);try{o.onAddress?.('dropoff',await geoReverse(p[1],p[0]))}catch(e){diag('reverse','تعذر العنوان',e.message)}route();return true}return false}
       function setMode(next){mode=next==='pickup'||next==='dropoff'||next==='locked'?next:'locked';if(mode==='pickup'){pickup=null;dropoff=null;routeSeq++;draw([])}if(mode==='dropoff')dropoff=null;centerPin(mode!=='locked');render();o.onSelectionModeChange?.(mode);return mode}
       function setPoints(a,b){const A=norm(a),B=norm(b);if(A&&B){pickup=A;dropoff=B;mode='locked';centerPin(false);render();route()}else if(A){pickup=A;dropoff=null;mode='dropoff';centerPin(true);render()}else{pickup=null;dropoff=null;mode='pickup';centerPin(true);render()}return{pickup,dropoff,mode}}
       map.on('load',()=>{render();centerPin(mode!=='locked');if(pickup&&dropoff)route();o.onReady?.({pickup,dropoff,mode})});
