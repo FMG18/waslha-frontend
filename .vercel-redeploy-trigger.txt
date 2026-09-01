@@ -1,0 +1,2 @@
+Production deployment trigger: 2026-09-01
+This file exists to force Vercel Git Integration to process the current main branch head.
