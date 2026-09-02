@@ -1,1 +1,29 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>وصلها | دخول الكابتن</title><link rel="stylesheet" href="assets/style.css?v=2026.09.02"></head><body><main class="shell"><section class="card" style="max-width:560px;margin:45px auto"><span class="badge">منصة الكباتن</span><h1>دخول الكابتن</h1><p class="muted">سجّل دخولك لإدارة رحلاتك.</p><form id="loginForm" class="form"><div class="field"><label>رقم الهاتف</label><input id="phone" inputmode="tel" autocomplete="username" required></div><div class="field"><label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div><button id="loginBtn" class="btn" type="submit">دخول</button></form><a href="captain-register.html" class="btn secondary" style="display:block;text-align:center;text-decoration:none;margin-top:10px">تقديم ككابتن جديد</a><a href="index.html" class="btn light" style="display:block;text-align:center;text-decoration:none;margin-top:10px">العودة لتسجيل دخول العميل</a><div id="status" class="muted" style="text-align:center;margin-top:12px"></div></section></main><script src="assets/app.js?v=2026.09.02"></script><script>(async()=>{const $=id=>document.getElementById(id);const oldToken=token;const oldUser=user();if(oldUser?.role!=='captain'){['waslha_token','waslha_user'].forEach(k=>localStorage.removeItem(k));token=null}$('loginForm').onsubmit=async e=>{e.preventDefault();const b=$('loginBtn'),s=$('status');try{setBusy(b,true,'جارٍ الدخول...');const d=await api('/auth/login',{method:'POST',body:JSON.stringify({phone:$('phone').value.trim(),password:$('password').value})});const saved=saveAuth(d.data||d);if(saved?.user?.role!=='captain')throw Error('هذا الحساب ليس حساب كابتن');location.replace('captain.html')}catch(e){s.textContent=e.message||'تعذر تسجيل الدخول'}finally{setBusy(b,false)}}})()</script></body></html>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>وصلها | دخول الكابتن</title><link rel="stylesheet" href="assets/style.css?v=2026.09.02"></head><body><main class="shell"><section class="card" style="max-width:560px;margin:45px auto"><span class="badge">منصة الكباتن</span><h1>دخول الكابتن</h1><p class="muted">سجّل دخولك لإدارة رحلاتك.</p><form id="loginForm" class="form" novalidate><div class="field"><label for="phone">رقم الهاتف</label><input id="phone" inputmode="tel" autocomplete="username" required></div><div class="field"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div><button id="loginBtn" class="btn" type="submit">دخول</button></form><a href="captain-register.html" class="btn secondary" style="display:block;text-align:center;text-decoration:none;margin-top:10px">تقديم ككابتن جديد</a><a href="index.html" class="btn light" style="display:block;text-align:center;text-decoration:none;margin-top:10px">العودة لتسجيل دخول العميل</a><div id="status" class="muted" style="text-align:center;margin-top:12px" role="status"></div></section></main><script src="assets/app.js?v=2026.09.02"></script><script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const form=$('loginForm'),btn=$('loginBtn'),status=$('status');
+  function setButton(busy){btn.disabled=busy;btn.textContent=busy?'جارٍ الدخول...':'دخول'}
+  function clearAuth(){localStorage.removeItem('waslha_token');localStorage.removeItem('waslha_user');window.token=null}
+  clearAuth();
+  form.addEventListener('submit',async function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    status.textContent='';
+    const phone=$('phone').value.trim(),password=$('password').value;
+    if(!phone||!password){status.textContent='أدخل رقم الهاتف وكلمة المرور';return}
+    setButton(true);
+    try{
+      const response=await fetch((window.API_BASE||'https://waslha-backend.vercel.app/api')+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({phone,password})});
+      let result={};try{result=await response.json()}catch(_){throw new Error('استجابة غير صالحة من الخادم')}
+      if(!response.ok||result.success===false)throw new Error(result.message||result.error||'تعذر تسجيل الدخول');
+      const data=result.data||result,user=data.user||data;
+      if(user.role!=='captain'){clearAuth();throw new Error('هذا الحساب ليس حساب كابتن')}
+      const authToken=data.token||result.token;
+      if(!authToken){clearAuth();throw new Error('لم يتم استلام رمز الدخول')}
+      localStorage.setItem('waslha_token',authToken);
+      localStorage.setItem('waslha_user',JSON.stringify(user));
+      window.location.replace('captain.html');
+    }catch(err){status.textContent=err.message||'تعذر تسجيل الدخول';setButton(false)}
+  });
+})();
+</script></body></html>
