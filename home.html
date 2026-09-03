@@ -22,7 +22,7 @@
 <button class="w-service" data-service="delivery" type="button"><span class="w-service-icon">📦</span><b>توصيل</b><small>وصّل طلبك بسهولة</small></button>
 <button class="w-service" data-service="delivery" type="button"><span class="w-service-icon">🛍️</span><b>إرسال طرد</b><small>من باب إلى باب</small></button>
 </div></section>
-<section class="w-section w-card w-promo"><div><span class="w-eyebrow" style="color:var(--w-primary)">وفر أكثر مع وصلها</span><h3>عندك كود خصم؟</h3><p>طبّق الكود قبل إنشاء الطلب واحصل على العرض.</p><div class="w-coupon"><input id="coupon" placeholder="مثال: WASLHA20" autocomplete="off"><button class="w-btn" id="couponBtn" type="button">تطبيق</button></div><small id="couponStatus" style="display:block;margin-top:7px"></small></div><div style="font-size:54px">🎁</div></section>
+<section class="w-section w-card w-promo"><div><span class="w-eyebrow" style="color:var(--w-primary)">العروض قادمة</span><h3>وفر أكثر مع وصلها</h3><p>نظام الخصومات والكوبونات قيد التجهيز، وسيظهر هنا عند إطلاقه.</p><small id="couponStatus" style="display:block;margin-top:7px">🎁 تابعنا للعروض القادمة</small></div><div style="font-size:54px">🎁</div></section>
 <section class="w-section"><div class="w-section-head"><h2>اختصارات</h2><span>وصول أسرع للأشياء المهمة</span></div><div class="w-quick"><a href="rides.html">🧾 <span>رحلاتي</span></a><a href="profile.html">👤 <span>حسابي</span></a><button id="savedBtn" type="button">📍 <span>أماكني</span></button><button id="supportBtn" type="button">💬 <span>المساعدة</span></button></div></section>
 </div></main>
 <nav class="w-bottom"><a class="active" href="home.html"><span>⌂</span>الرئيسية</a><a href="rides.html"><span>▣</span>رحلاتي</a><a href="profile.html"><span>◉</span>حسابي</a><a href="customer.html"><span>＋</span>اطلب</a></nav>
@@ -31,9 +31,7 @@
 (()=>{
 const go=s=>{localStorage.setItem('waslha_service',s);location.href='customer.html'};
 document.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>go(b.dataset.service));
-const couponBtn=document.getElementById('couponBtn');
-couponBtn.onclick=async()=>{const v=document.getElementById('coupon').value.trim().toUpperCase(),st=document.getElementById('couponStatus');if(!v){st.textContent='أدخل كود الخصم أولاً.';return}try{const d=await api('/coupons/validate',{method:'POST',body:JSON.stringify({code:v})});if(d?.success===false)throw Error(d.message||'الكود غير صالح');localStorage.setItem('waslha_coupon',v);st.textContent='✓ الكود صالح وسيُطبق عند إنشاء الطلب.'}catch(e){st.textContent=e.message||'تعذر التحقق من الكود.'}};
-document.getElementById('savedBtn').onclick=()=>location.href='profile.html#saved';
+document.getElementById('savedBtn').onclick=()=>typeof toast==='function'?toast('الأماكن المحفوظة قريباً'):alert('الأماكن المحفوظة قريباً');
 document.getElementById('supportBtn').onclick=()=>typeof toast==='function'?toast('الدعم والمساعدة قريباً'):alert('الدعم والمساعدة قريباً');
 document.getElementById('logoutBtn').onclick=typeof logout==='function'?logout:()=>{localStorage.clear();location.href='index.html'};
 })();
