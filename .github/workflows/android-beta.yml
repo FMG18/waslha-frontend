@@ -46,7 +46,7 @@ jobs:
           CONVERT=$(command -v convert || true)
           test -n "$CONVERT"
           ANDROID_RES=android/app/src/main/res
-          rm -rf "$ANDROID_RES/mipmap-anydpi-v26"
+          rm -rf "$ANDROID_RES/mipmap-anydpi" "$ANDROID_RES/mipmap-anydpi-v26"
           for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             density="${spec%%:*}"
             size="${spec##*:}"
@@ -63,10 +63,11 @@ jobs:
 
       - name: Re-apply launcher icons after Capacitor sync
         run: |
-          set -e
+          set -euo pipefail
           test -s icon.png
           CONVERT=$(command -v convert)
           ANDROID_RES=android/app/src/main/res
+          rm -rf "$ANDROID_RES/mipmap-anydpi" "$ANDROID_RES/mipmap-anydpi-v26"
           for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             density="${spec%%:*}"
             size="${spec##*:}"
@@ -74,8 +75,10 @@ jobs:
             mkdir -p "$dir"
             "$CONVERT" icon.png -auto-orient -resize "${size}x${size}" -gravity center -background none -extent "${size}x${size}" PNG32:"$dir/ic_launcher.png"
             cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+            test -s "$dir/ic_launcher.png"
           done
-          find "$ANDROID_RES" -type f -name 'ic_launcher*.png' -print
+          echo 'Final launcher resources:'
+          find "$ANDROID_RES" -type f \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' -o -name 'ic_launcher*.xml' \) -print | sort
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -118,7 +121,16 @@ jobs:
           s = re.sub(r'versionCode\s+\d+', f'versionCode {100+n}', s, count=1)
           s = re.sub(r'versionName\s+"[^"]*"', f'versionName "1.0.{n}"', s, count=1)
           if 'signingConfigs {' not in s:
-              block = '''    signingConfigs {\n        release {\n            storeFile file(System.getenv("WASLHA_KEYSTORE"))\n            storePassword System.getenv("WASLHA_KEYSTORE_PASSWORD")\n            keyAlias System.getenv("WASLHA_KEY_ALIAS")\n            keyPassword System.getenv("WASLHA_KEY_PASSWORD")\n        }\n    }\n\n'''
+              block = '''    signingConfigs {
+          release {
+              storeFile file(System.getenv("WASLHA_KEYSTORE"))
+              storePassword System.getenv("WASLHA_KEYSTORE_PASSWORD")
+              keyAlias System.getenv("WASLHA_KEY_ALIAS")
+              keyPassword System.getenv("WASLHA_KEY_PASSWORD")
+          }
+      }
+
+  '''
               s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
           if 'signingConfig signingConfigs.release' not in s:
               s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1\n            signingConfig signingConfigs.release', s, count=1)
@@ -142,8 +154,13 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose "$APK"
-          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher\.png' > /tmp/icon-check.txt
+          echo 'Launcher files packaged in APK:'
+          unzip -l "$APK" | grep -E 'res/mipmap[^/]*/ic_launcher\.png$' | tee /tmp/icon-check.txt
           test "$(wc -l < /tmp/icon-check.txt)" -ge 5
+          if unzip -l "$APK" | grep -E 'res/mipmap-anydpi(-v26)?/ic_launcher.*\.(xml|png)$'; then
+            echo 'ERROR: adaptive launcher resources are still present.'
+            exit 1
+          fi
           echo 'SIGNED APK AND LAUNCHER ICON VERIFIED.'
 
       - name: Upload APK
