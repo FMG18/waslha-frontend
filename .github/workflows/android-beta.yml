@@ -30,49 +30,52 @@ jobs:
           set -e
           rm -rf www
           mkdir -p www
-          test -f index.html
+          test -s index.html
           cp index.html www/index.html
           if [ -d assets ]; then cp -R assets www/assets; fi
 
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Install image tools
+      - name: Generate Android launcher icons
         run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-          command -v magick
-
-      - name: Generate Android app icon
-        run: |
-          set -e
+          set -euo pipefail
           test -s icon.png
+          sudo apt-get update -qq
+          sudo apt-get install -y imagemagick
+          CONVERT=$(command -v convert || true)
+          test -n "$CONVERT"
           ANDROID_RES=android/app/src/main/res
-          rm -f "$ANDROID_RES/mipmap-anydpi-v26/ic_launcher.xml"
-          rm -f "$ANDROID_RES/mipmap-anydpi-v26/ic_launcher_round.xml"
-          for spec in \
-            'mdpi:48' \
-            'hdpi:72' \
-            'xhdpi:96' \
-            'xxhdpi:144' \
-            'xxxhdpi:192'; do
+          rm -rf "$ANDROID_RES/mipmap-anydpi-v26"
+          for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             density="${spec%%:*}"
             size="${spec##*:}"
             dir="$ANDROID_RES/mipmap-$density"
             mkdir -p "$dir"
-            magick icon.png -auto-orient -resize "${size}x${size}" -gravity center -background none -extent "${size}x${size}" PNG32:"$dir/ic_launcher.png"
+            "$CONVERT" icon.png -auto-orient -resize "${size}x${size}" -gravity center -background none -extent "${size}x${size}" PNG32:"$dir/ic_launcher.png"
             cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+            test -s "$dir/ic_launcher.png"
           done
-          test -s "$ANDROID_RES/mipmap-mdpi/ic_launcher.png"
-          test -s "$ANDROID_RES/mipmap-hdpi/ic_launcher.png"
-          test -s "$ANDROID_RES/mipmap-xhdpi/ic_launcher.png"
-          test -s "$ANDROID_RES/mipmap-xxhdpi/ic_launcher.png"
-          test -s "$ANDROID_RES/mipmap-xxxhdpi/ic_launcher.png"
-          echo 'Launcher icon generated successfully.'
+          echo 'Android launcher icons generated.'
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Re-apply launcher icons after Capacitor sync
+        run: |
+          set -e
+          test -s icon.png
+          CONVERT=$(command -v convert)
+          ANDROID_RES=android/app/src/main/res
+          for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            density="${spec%%:*}"
+            size="${spec##*:}"
+            dir="$ANDROID_RES/mipmap-$density"
+            mkdir -p "$dir"
+            "$CONVERT" icon.png -auto-orient -resize "${size}x${size}" -gravity center -background none -extent "${size}x${size}" PNG32:"$dir/ic_launcher.png"
+            cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+          done
+          find "$ANDROID_RES" -type f -name 'ic_launcher*.png' -print
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -88,10 +91,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: |
           set -e
-          test -n "$KEYSTORE_B64" || { echo 'Missing WASLHA_KEYSTORE_BASE64'; exit 1; }
-          test -n "$KEYSTORE_PASSWORD" || { echo 'Missing WASLHA_KEYSTORE_PASSWORD'; exit 1; }
-          test -n "$KEY_ALIAS" || { echo 'Missing WASLHA_KEY_ALIAS'; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo 'Missing WASLHA_KEY_PASSWORD'; exit 1; }
+          test -n "$KEYSTORE_B64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
 
       - name: Decode release keystore
         env:
@@ -131,22 +134,17 @@ jobs:
           WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Verify APK
+      - name: Verify APK and launcher icon
         run: |
-          set -e
+          set -euo pipefail
           APK=android/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose "$APK"
-
-      - name: Verify launcher icon inside APK
-        run: |
-          set -e
-          APK=android/app/build/outputs/apk/release/app-release.apk
-          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher\.png' | tee /tmp/icon-check.txt
+          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher\.png' > /tmp/icon-check.txt
           test "$(wc -l < /tmp/icon-check.txt)" -ge 5
-          echo 'Launcher icon files verified inside APK.'
+          echo 'SIGNED APK AND LAUNCHER ICON VERIFIED.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
