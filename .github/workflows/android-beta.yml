@@ -40,10 +40,34 @@ jobs:
       - name: Generate Android app icon
         run: |
           set -e
-          test -s icon.png
+          test -s icon.png || { echo 'icon.png is missing or empty'; exit 1; }
           mkdir -p resources
           cp icon.png resources/icon.png
           npx @capacitor/assets@latest generate --android
+
+          # Force the launcher to use the uploaded icon on every Android version.
+          # Remove adaptive XML overrides so Android cannot fall back to Capacitor's default icon.
+          ANDROID_RES=android/app/src/main/res
+          rm -f "$ANDROID_RES/mipmap-anydpi-v26/ic_launcher.xml"
+          rm -f "$ANDROID_RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+
+          # Generate all legacy launcher densities directly from the uploaded icon.
+          for spec in \
+            'mdpi:48' \
+            'hdpi:72' \
+            'xhdpi:96' \
+            'xxhdpi:144' \
+            'xxxhdpi:192'; do
+            density="${spec%%:*}"
+            size="${spec##*:}"
+            dir="$ANDROID_RES/mipmap-$density"
+            mkdir -p "$dir"
+            magick icon.png -resize "${size}x${size}" -gravity center -extent "${size}x${size}" "$dir/ic_launcher.png"
+            cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+          done
+
+          echo 'Launcher icon files:'
+          find "$ANDROID_RES" -path '*mipmap*' -type f \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \) -print
 
       - name: Sync Capacitor
         run: npx cap sync android
@@ -113,6 +137,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose "$APK"
+
+          # Confirm the APK actually contains launcher icons before publishing it.
+          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher(_round)?\.png$'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
