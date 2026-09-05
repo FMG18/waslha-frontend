@@ -1,4 +1,4 @@
-name: Waslha Android Beta APK
+name: Waslha Android Release APK
 
 on:
   workflow_dispatch:
@@ -46,15 +46,22 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Prepare signing key
+      - name: Prepare release signing
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          WASLHA_KEYSTORE_BASE64: ${{ secrets.WASLHA_KEYSTORE_BASE64 }}
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: |
-          test -n "$KEYSTORE_BASE64"
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > waslha-release.keystore
-          test -s waslha-release.keystore
+          test -n "$WASLHA_KEYSTORE_BASE64" || (echo "Missing WASLHA_KEYSTORE_BASE64" && exit 1)
+          test -n "$WASLHA_KEYSTORE_PASSWORD" || (echo "Missing WASLHA_KEYSTORE_PASSWORD" && exit 1)
+          test -n "$WASLHA_KEY_ALIAS" || (echo "Missing WASLHA_KEY_ALIAS" && exit 1)
+          test -n "$WASLHA_KEY_PASSWORD" || (echo "Missing WASLHA_KEY_PASSWORD" && exit 1)
+          printf '%s' "$WASLHA_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/waslha-release.keystore"
+          test -s "$GITHUB_WORKSPACE/waslha-release.keystore"
+          keytool -list -keystore "$GITHUB_WORKSPACE/waslha-release.keystore" -storepass "$WASLHA_KEYSTORE_PASSWORD" -alias "$WASLHA_KEY_ALIAS" >/dev/null
 
-      - name: Set Android version
+      - name: Configure Android release and version
         working-directory: android
         env:
           BUILD_NUMBER: ${{ github.run_number }}
@@ -65,35 +72,84 @@ jobs:
           p = Path('app/build.gradle')
           s = p.read_text()
           n = int(os.environ['BUILD_NUMBER'])
-          s = re.sub(r'versionCode\s+\d+', f'versionCode {n}', s, count=1)
+          version_code = 100 + n
+          s = re.sub(r'versionCode\s+\d+', f'versionCode {version_code}', s, count=1)
           s = re.sub(r'versionName\s+"[^"]*"', f'versionName "1.0.{n}"', s, count=1)
+
+          if 'signingConfigs {' not in s:
+              marker = '    buildTypes {'
+              signing = '''    signingConfigs {
+                  release {
+                      storeFile file(System.getenv("WASLHA_KEYSTORE"))
+                      storePassword System.getenv("WASLHA_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("WASLHA_KEY_ALIAS")
+                      keyPassword System.getenv("WASLHA_KEY_PASSWORD")
+                  }
+              }
+
+'''
+              if marker not in s:
+                  raise SystemExit('Could not find buildTypes block in app/build.gradle')
+              s = s.replace(marker, signing + marker, 1)
+          else:
+              if 'release {' not in s[s.find('signingConfigs {'):s.find('buildTypes {') if 'buildTypes {' in s else len(s)]:
+                  marker = '    buildTypes {'
+                  release_signing = '''    signingConfigs {
+                  release {
+                      storeFile file(System.getenv("WASLHA_KEYSTORE"))
+                      storePassword System.getenv("WASLHA_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("WASLHA_KEY_ALIAS")
+                      keyPassword System.getenv("WASLHA_KEY_PASSWORD")
+                  }
+              }
+
+'''
+                  s = s.replace(marker, release_signing + marker, 1)
+
+          build_types = s.find('buildTypes {')
+          if build_types == -1:
+              raise SystemExit('Could not find buildTypes block')
+          release = s.find('release {', build_types)
+          if release == -1:
+              raise SystemExit('Could not find release build type')
+          release_end = s.find('\n', release)
+          block_end = s.find('}', release_end)
+          release_block = s[release:block_end if block_end != -1 else len(s)]
+          if 'signingConfig signingConfigs.release' not in release_block:
+              s = s[:release_end + 1] + '            signingConfig signingConfigs.release\n' + s[release_end + 1:]
+
           p.write_text(s)
           PY
 
-      - name: Build Android APK
+      - name: Build signed release APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Sign APK with Waslha release key
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: |
-          test -n "$KEYSTORE_PASSWORD"
-          test -n "$KEY_ALIAS"
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          test -x "$ZIPALIGN"
-          test -x "$APKSIGNER"
-          "$ZIPALIGN" -f 4 "$APK" android/app-release-unsigned.apk
-          "$APKSIGNER" sign --ks waslha-release.keystore --ks-key-alias "$KEY_ALIAS" --ks-pass pass:"$KEYSTORE_PASSWORD" --key-pass pass:"$KEYSTORE_PASSWORD" --out android/app-release.apk android/app-release-unsigned.apk
-          "$APKSIGNER" verify --verbose android/app-release.apk
+          WASLHA_KEYSTORE: ${{ github.workspace }}/waslha-release.keystore
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
 
-      - name: Upload Beta APK
+      - name: Verify signed APK
+        env:
+          WASLHA_KEYSTORE: ${{ github.workspace }}/waslha-release.keystore
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose "$APK"
+          keytool -printcert -jarfile "$APK" | grep -E 'Owner:|SHA256:'
+
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: waslha-beta-apk
-          path: android/app-release.apk
+          name: waslha-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: Clean signing key
+        if: always()
+        run: rm -f waslha-release.keystore
