@@ -1,5 +1,7 @@
 name: Waslha Android Release APK
 
+# Release build: persistent signing + automatic versioning
+
 on:
   workflow_dispatch:
   push:
