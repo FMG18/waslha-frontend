@@ -1,0 +1,12 @@
+{
+  "appId": "com.waszlha.app",
+  "appName": "وصلها",
+  "webDir": ".",
+  "server": {
+    "url": "https://waslha-frontend.vercel.app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
