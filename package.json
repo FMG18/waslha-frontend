@@ -1,0 +1,16 @@
+{
+  "name": "waslha-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Waslha Android application wrapper",
+  "scripts": {
+    "android": "cap open android",
+    "sync": "cap sync android",
+    "build:android": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/cli": "^8.0.0"
+  }
+}
