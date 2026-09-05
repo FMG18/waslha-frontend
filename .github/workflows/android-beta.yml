@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,13 +27,16 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          printf '%s\n' '<!doctype html><html><head><meta charset="utf-8"><title>وصلها</title></head><body></body></html>' > www/index.html
+          cp index.html www/index.html
+          cp -R assets www/assets
 
       - name: Add Android platform
         run: npx cap add android
 
       - name: Prepare app icon
         run: |
+          set -e
+          test -s icon.png || { echo "icon.png is missing or empty"; exit 1; }
           mkdir -p resources
           cp icon.png resources/icon.png
           npx @capacitor/assets@latest generate --android
@@ -43,22 +49,24 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Prepare release signing
         env:
           KEYSTORE_B64: ${{ secrets.WASLHA_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: |
           set -e
           test -n "$KEYSTORE_B64" || { echo "Missing WASLHA_KEYSTORE_BASE64"; exit 1; }
           test -n "$KEYSTORE_PASSWORD" || { echo "Missing WASLHA_KEYSTORE_PASSWORD"; exit 1; }
           test -n "$KEY_ALIAS" || { echo "Missing WASLHA_KEY_ALIAS"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "Missing WASLHA_KEY_PASSWORD"; exit 1; }
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/waslha-release.keystore"
           test -s "$RUNNER_TEMP/waslha-release.keystore"
-          echo "Keystore decoded successfully."
           keytool -list -keystore "$RUNNER_TEMP/waslha-release.keystore" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
-          echo "Keystore password and alias verified."
+          echo "Release keystore verified successfully."
 
       - name: Configure release signing and version
         working-directory: android
@@ -86,12 +94,7 @@ jobs:
           if 'signingConfigs {' not in s:
               s = s.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
           if 'signingConfig signingConfigs.release' not in s:
-              s = re.sub(
-                  r'(buildTypes\s*\{\s*release\s*\{)',
-                  r'\1\n            signingConfig signingConfigs.release',
-                  s,
-                  count=1
-              )
+              s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1\n            signingConfig signingConfigs.release', s, count=1)
           p.write_text(s)
           PY
 
@@ -106,15 +109,18 @@ jobs:
 
       - name: Verify APK signature
         run: |
+          set -e
           APK=android/app/build/outputs/apk/release/app-release.apk
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
-          test -f "$APK"
+          test -s "$APK"
+          test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose "$APK"
+          echo "SIGNED APK VERIFIED"
 
-      - name: Upload APK
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: waslha-release-apk
+          name: waslha-release-apk-${{ github.run_number }}
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 90
