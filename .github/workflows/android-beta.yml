@@ -3,6 +3,8 @@ name: Waslha Android Beta APK
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'android-beta-*'
 
@@ -28,6 +30,12 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
+
+      - name: Prepare Waslha app icon
+        run: |
+          mkdir -p resources
+          cp icon.png resources/icon.png
+          npx @capacitor/assets@latest generate --android
 
       - name: Sync Capacitor
         run: npx cap sync android
