@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
@@ -24,17 +25,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-/**
- * Branded Android launch surface. It intentionally performs no network work;
- * MainActivity owns authentication and the passenger experience.
- */
 class LaunchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,9 +53,9 @@ class LaunchActivity : ComponentActivity() {
                         .background(
                             Brush.linearGradient(
                                 listOf(
-                                    Color(0xFF087F5B),
-                                    Color(0xFF0B9A6A),
-                                    Color(0xFF063F2E)
+                                    Color(0xFF12082A),
+                                    Color(0xFF23104D),
+                                    Color(0xFF080812)
                                 )
                             )
                         ),
@@ -69,19 +68,24 @@ class LaunchActivity : ComponentActivity() {
                         AnimatedVisibility(visible = visible, enter = fadeIn() + scaleIn()) {
                             Box(
                                 modifier = Modifier
-                                    .size(112.dp)
-                                    .background(Color.White, CircleShape),
+                                    .size(124.dp)
+                                    .clip(RoundedCornerShape(34.dp))
+                                    .background(Color(0xFF0F0F1A)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("و", color = Color(0xFF087F5B), fontSize = 64.sp, fontWeight = FontWeight.Black)
+                                Image(
+                                    painter = painterResource(id = R.drawable.waslha_brand_logo),
+                                    contentDescription = "وصلها",
+                                    modifier = Modifier.size(104.dp)
+                                )
                             }
                         }
                         Spacer(Modifier.height(20.dp))
                         AnimatedVisibility(visible = visible, enter = fadeIn()) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("وصلها", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Black)
-                                Spacer(Modifier.height(5.dp))
-                                Text("مشوارك يبدأ هنا", color = Color.White.copy(alpha = .82f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                Text("وصلها", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                                Spacer(Modifier.height(6.dp))
+                                Text("وصلها.. أسرع وأسهل", color = Color(0xFFC7B8FF), fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
