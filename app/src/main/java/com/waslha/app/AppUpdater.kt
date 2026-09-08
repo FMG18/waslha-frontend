@@ -17,23 +17,42 @@ import java.security.MessageDigest
 class AppUpdater(private val context: Context) {
     private val appContext = context.applicationContext
     private val downloadManager = appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    private val prefs = appContext.getSharedPreferences("waslha_update", Context.MODE_PRIVATE)
 
     suspend fun check(): Result<AppUpdateDto?> = withContext(Dispatchers.IO) {
         runCatching {
-            ApiProvider.api.latestUpdate(BuildConfig.VERSION_CODE, Build.SUPPORTED_ABIS.firstOrNull() ?: "universal")
-                .let { response ->
-                    require(response.success) { response.message ?: "تعذر فحص التحديث" }
-                    response.data?.takeIf { it.updateAvailable && it.apk != null }
-                }
+            ApiProvider.api.latestUpdate(
+                BuildConfig.VERSION_CODE,
+                Build.SUPPORTED_ABIS.firstOrNull() ?: "universal"
+            ).let { response ->
+                require(response.success) { response.message ?: "تعذر فحص التحديث" }
+                response.data?.takeIf { it.updateAvailable && it.apk != null }
+            }
         }
     }
 
     fun downloadUpdate(update: AppUpdateDto): Long {
         val apk = requireNotNull(update.apk)
-        val directory = File(appContext.cacheDir, "updates").apply { mkdirs() }
+        val directory = File(appContext.externalCacheDir ?: appContext.cacheDir, "updates").apply { mkdirs() }
         val file = File(directory, apk.name)
-        if (file.exists()) file.delete()
+        val oldId = prefs.getLong("download_id", -1L)
 
+        if (oldId > 0L) {
+            val query = DownloadManager.Query().setFilterById(oldId)
+            downloadManager.query(query).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    val storedVersion = prefs.getString("version", null)
+                    if (storedVersion == update.versionName &&
+                        (status == DownloadManager.STATUS_PENDING ||
+                         status == DownloadManager.STATUS_RUNNING ||
+                         status == DownloadManager.STATUS_PAUSED)
+                    ) return oldId
+                }
+            }
+        }
+
+        if (file.exists()) file.delete()
         val request = DownloadManager.Request(Uri.parse(apk.url))
             .setTitle("وصلها ${update.versionName}")
             .setDescription("جاري تنزيل تحديث وصلها")
@@ -43,15 +62,25 @@ class AppUpdater(private val context: Context) {
             .setAllowedOverRoaming(false)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
-        return downloadManager.enqueue(request)
+        val id = downloadManager.enqueue(request)
+        prefs.edit().putLong("download_id", id).putString("version", update.versionName).apply()
+        return id
     }
 
-    fun isDownloadComplete(downloadId: Long): Boolean {
+    fun downloadProgress(downloadId: Long): Pair<Long, Long> {
         val query = DownloadManager.Query().setFilterById(downloadId)
         downloadManager.query(query).use { cursor ->
-            if (!cursor.moveToFirst()) return false
-            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            return status == DownloadManager.STATUS_SUCCESSFUL
+            if (!cursor.moveToFirst()) return 0L to 0L
+            return cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)) to
+                cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+        }
+    }
+
+    fun downloadStatus(downloadId: Long): Int? {
+        val query = DownloadManager.Query().setFilterById(downloadId)
+        downloadManager.query(query).use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            return cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
         }
     }
 
@@ -62,10 +91,7 @@ class AppUpdater(private val context: Context) {
             val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
             if (status != DownloadManager.STATUS_SUCCESSFUL) return null
             val uri = Uri.parse(cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)))
-            return when (uri.scheme) {
-                "file" -> File(requireNotNull(uri.path))
-                else -> null
-            }
+            return if (uri.scheme == "file") uri.path?.let(::File) else null
         }
     }
 
@@ -92,6 +118,7 @@ class AppUpdater(private val context: Context) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         appContext.startActivity(intent)
+        prefs.edit().remove("download_id").remove("version").apply()
     }
 
     fun cleanup(file: File?) {
