@@ -12,7 +12,7 @@ android {
         applicationId = "com.waslha.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
+        versionCode = 130
         versionName = "1.3.0"
     }
 
