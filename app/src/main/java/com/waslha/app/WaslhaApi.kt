@@ -12,7 +12,7 @@ interface WaslhaApi {
     suspend fun requestCode(@Body body: OtpRequest): ApiEnvelope<OtpResponse>
 
     @POST("/api/v1/auth/verify-code")
-    suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<SessionData>
+    suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
 
     @GET("/api/v1/catalog/vehicle-types")
     suspend fun vehicleTypes(): ApiEnvelope<List<VehicleTypeDto>>
