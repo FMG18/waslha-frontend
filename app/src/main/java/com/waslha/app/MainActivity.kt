@@ -606,10 +606,10 @@ private fun TripFlowScreen(
     if (cancelOpen) {
         CancelTripDialog(
             onDismiss = { cancelOpen = false },
-            onConfirm = {
+            onConfirm = { reason ->
                 cancelOpen = false
                 val trip = (state as? TripUiState.Success)?.trip ?: return@CancelTripDialog
-                onCancel(trip.id, it)
+                onCancel(trip.id, reason)
             }
         )
     }
@@ -679,32 +679,6 @@ private fun RouteRow(label: String, value: String, start: Boolean) {
             Text(value, fontSize = 12.sp, color = Ink, fontWeight = FontWeight.Bold)
         }
     }
-}
-
-@Composable
-private fun CancelTripDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var reason by remember { mutableStateOf("تغيير الخطة") }
-    val reasons = listOf("تغيير الخطة", "وجدت سيارة أخرى", "انتظرت طويلاً", "سبب آخر")
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("إلغاء الرحلة", fontWeight = FontWeight.Black) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text("اختر سبب الإلغاء", color = Muted, fontSize = 11.sp)
-                reasons.forEach {
-                    Card(
-                        Modifier.fillMaxWidth().clickable { reason = it },
-                        colors = CardDefaults.cardColors(if (reason == it) GreenSoft else AppBg),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(it, Modifier.padding(11.dp), fontSize = 12.sp, fontWeight = if (reason == it) FontWeight.Bold else FontWeight.Normal)
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { onConfirm(reason) }) { Text("تأكيد الإلغاء", color = Danger) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("رجوع") } }
-    )
 }
 
 @Composable
