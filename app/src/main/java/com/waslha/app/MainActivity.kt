@@ -140,45 +140,101 @@ private fun PassengerApp(onLogout: () -> Unit) {
 @Composable
 private fun HomeScreen(destination: String, onDestination: () -> Unit, onRequest: () -> Unit) {
     var selected by remember { mutableIntStateOf(0) }
-    val types = listOf("اقتصادي" to "3,500 ل.س", "مريح" to "5,000 ل.س", "عائلي" to "6,500 ل.س")
+    val types = listOf(
+        Triple("اقتصادي", "3,500 ل.س", "3-5 د"),
+        Triple("مريح", "5,000 ل.س", "4-6 د"),
+        Triple("عائلي", "6,500 ل.س", "5-8 د")
+    )
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().weight(1f).background(MapBg)) {
+            // Map placeholder kept intentionally lightweight until Mapbox credentials are wired.
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(82.dp).background(Green.copy(alpha = .14f), CircleShape), Alignment.Center) { Icon(Icons.Default.LocationOn, null, tint = Green, modifier = Modifier.size(44.dp)) }
-                Spacer(Modifier.height(10.dp)); Text("الخريطة جاهزة", fontWeight = FontWeight.Black, color = Ink); Text("Mapbox + GPS في المرحلة الأخيرة", color = Muted, fontSize = 11.sp)
+                Box(Modifier.size(88.dp).background(Green.copy(alpha = .14f), CircleShape), Alignment.Center) {
+                    Icon(Icons.Default.LocationOn, null, tint = Green, modifier = Modifier.size(48.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("موقعك الحالي", fontWeight = FontWeight.Black, color = Ink)
+                Text("حدد الوجهة وسنقترح أقرب سيارة", color = Muted, fontSize = 11.sp)
             }
-            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(16.dp)) { Text("وصلها", modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), fontSize = 21.sp, fontWeight = FontWeight.Black, color = Green) }
-                IconButton(onClick = {}) { Icon(Icons.Default.NotificationsNone, "الإشعارات", tint = Ink) }
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(16.dp)) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(9.dp).background(Green, CircleShape))
+                        Spacer(Modifier.width(8.dp))
+                        Text("وصلها", fontSize = 21.sp, fontWeight = FontWeight.Black, color = Green)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Card(colors = CardDefaults.cardColors(Color.White), shape = CircleShape) {
+                    IconButton(onClick = {}) { Icon(Icons.Default.NotificationsNone, "الإشعارات", tint = Ink) }
+                }
+            }
+            Card(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 14.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(16.dp)) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Place, null, tint = Green, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("موقع الانطلاق", fontSize = 10.sp, color = Muted)
+                        Text("استخدام موقع GPS الحالي", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ink)
+                    }
+                }
             }
         }
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), colors = CardDefaults.cardColors(Color.White)) {
-            Column(Modifier.padding(18.dp).navigationBarsPadding()) {
-                Text("وين نوصلك؟", fontSize = 25.sp, fontWeight = FontWeight.Black, color = Ink)
-                Text("اختار وجهتك ونوع السيارة", color = Muted, fontSize = 12.sp)
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), colors = CardDefaults.cardColors(Color.White)) {
+            Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 10.dp).navigationBarsPadding()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("وين نوصلك؟", fontSize = 25.sp, fontWeight = FontWeight.Black, color = Ink)
+                        Text("اختار الوجهة وشوف السعر قبل الطلب", color = Muted, fontSize = 12.sp)
+                    }
+                    Card(colors = CardDefaults.cardColors(Green.copy(alpha = .10f)), shape = CircleShape) {
+                        Text("1/3", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
                 Spacer(Modifier.height(14.dp))
-                Card(Modifier.fillMaxWidth().clickable(onClick = onDestination), colors = CardDefaults.cardColors(SurfaceBg), shape = RoundedCornerShape(16.dp)) {
+                Card(Modifier.fillMaxWidth().clickable(onClick = onDestination), colors = CardDefaults.cardColors(SurfaceBg), shape = RoundedCornerShape(17.dp)) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Search, null, tint = Green)
-                        Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text("الوجهة", fontSize = 11.sp, color = Muted); Text(if (destination.isBlank()) "ابحث عن مكان أو عنوان" else destination, fontWeight = FontWeight.Bold, color = Ink) }
+                        Box(Modifier.size(36.dp).background(Green.copy(alpha = .10f), CircleShape), Alignment.Center) { Icon(Icons.Default.Search, null, tint = Green, modifier = Modifier.size(19.dp)) }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("الوجهة", fontSize = 10.sp, color = Muted)
+                            Text(if (destination.isBlank()) "ابحث عن مكان أو عنوان" else destination, fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
+                        }
                         Icon(Icons.Default.ChevronLeft, null, tint = Muted)
                     }
                 }
-                Spacer(Modifier.height(14.dp)); Text("نوع التكسي", fontWeight = FontWeight.Bold, color = Ink); Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    types.forEachIndexed { index, item -> Box(Modifier.weight(1f)) { CarType(item.first, item.second, index == selected) { selected = index } } }
+                Spacer(Modifier.height(13.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("نوع السيارة", fontWeight = FontWeight.Bold, color = Ink)
+                    Spacer(Modifier.weight(1f))
+                    Text("السعر تقديري", fontSize = 10.sp, color = Muted)
                 }
-                Spacer(Modifier.height(14.dp))
-                Button(onClick = onRequest, enabled = destination.isNotBlank(), modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.DirectionsCar, null); Spacer(Modifier.width(8.dp)); Text("اطلب سيارة الآن", fontWeight = FontWeight.Black) }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    types.forEachIndexed { index, item ->
+                        Box(Modifier.weight(1f)) { CarType(item.first, item.second, item.third, index == selected) { selected = index } }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onRequest, enabled = destination.isNotBlank(), modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(17.dp)) {
+                    Icon(Icons.Default.DirectionsCar, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (destination.isBlank()) "حدد وجهتك أولاً" else "اطلب سيارة الآن", fontWeight = FontWeight.Black)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CarType(name: String, price: String, selected: Boolean, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(if (selected) Green.copy(alpha = .11f) else SurfaceBg), shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("🚕", fontSize = 22.sp); Text(name, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Ink); Text(price, fontSize = 10.sp, color = Muted) }
+private fun CarType(name: String, price: String, eta: String, selected: Boolean, onClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(if (selected) Green.copy(alpha = .11f) else SurfaceBg), shape = RoundedCornerShape(15.dp), border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Green.copy(alpha = .35f)) else null) {
+        Column(Modifier.fillMaxWidth().padding(9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🚕", fontSize = 21.sp)
+            Text(name, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Ink)
+            Text(price, fontSize = 10.sp, color = Green, fontWeight = FontWeight.Bold)
+            Text(eta, fontSize = 9.sp, color = Muted)
+        }
     }
 }
 
