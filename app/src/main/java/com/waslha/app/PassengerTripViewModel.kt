@@ -25,7 +25,7 @@ class PassengerTripViewModel(
     private var pollingJob: Job? = null
 
     fun createTrip(request: TripRequest) {
-        pollingJob?.cancel()
+        stopPolling()
         viewModelScope.launch {
             _state.value = TripUiState.Loading
             repository.create(request)
@@ -48,7 +48,7 @@ class PassengerTripViewModel(
     }
 
     fun cancelTrip(id: String, reason: String) {
-        pollingJob?.cancel()
+        stopPolling()
         viewModelScope.launch {
             _state.value = TripUiState.Loading
             repository.cancel(id, reason)
@@ -58,20 +58,28 @@ class PassengerTripViewModel(
     }
 
     private fun startPolling(id: String) {
-        pollingJob?.cancel()
+        stopPolling()
         pollingJob = viewModelScope.launch {
-            while (true) {
+            var keepPolling = true
+            while (keepPolling) {
                 delay(5000)
                 repository.get(id).onSuccess { trip ->
                     _state.value = TripUiState.Success(trip)
-                    if (trip.status == "completed" || trip.status == "cancelled") cancel()
+                    if (trip.status == "completed" || trip.status == "cancelled") {
+                        keepPolling = false
+                    }
                 }
             }
         }
     }
 
-    override fun onCleared() {
+    private fun stopPolling() {
         pollingJob?.cancel()
+        pollingJob = null
+    }
+
+    override fun onCleared() {
+        stopPolling()
         super.onCleared()
     }
 }
