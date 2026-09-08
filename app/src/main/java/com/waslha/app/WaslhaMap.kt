@@ -33,11 +33,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapbox.geojson.Point
+import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
 import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
 import com.mapbox.maps.CameraOptions
+
+private fun calculateEstimatedFare(distanceKm: Double, durationMin: Int): Int {
+    val base = 2500.0
+    val distancePart = distanceKm * 1200.0
+    val timePart = durationMin * 70.0
+    return ((base + distancePart + timePart) / 250.0).toInt() * 250
+}
 
 @Composable
 fun WaslhaRideMap(
@@ -73,6 +82,21 @@ fun WaslhaRideMap(
         }
     }
 
+    MapEffect(routeResult?.points) { mapView ->
+        val points = routeResult?.points.orEmpty().map { Point.fromLngLat(it.lng, it.lat) }
+        if (points.size >= 2) {
+            mapView.mapboxMap.cameraForCoordinates(
+                coordinates = points,
+                camera = CameraOptions.Builder().pitch(0.0).bearing(0.0).build(),
+                coordinatesPadding = EdgeInsets(180.0, 48.0, 260.0, 48.0),
+                maxZoom = 15.5,
+                offset = null
+            ) { cameraPosition ->
+                viewport.setCameraOptions(cameraPosition)
+            }
+        }
+    }
+
     Box(modifier.background(Color(0xFFE7EFEB))) {
         MapboxMap(
             modifier = Modifier.fillMaxSize(),
@@ -93,6 +117,7 @@ fun WaslhaRideMap(
                     ) {
                         lineColor = Color(0xFF078A60)
                         lineWidth = 5.0
+                        lineOpacity = 0.95
                     }
                 }
             }
@@ -154,21 +179,34 @@ fun WaslhaRideMap(
         }
 
         routeResult?.let { result ->
+            val estimatedFare = calculateEstimatedFare(result.distanceKm, result.durationMin)
             Card(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
-                colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
-                shape = RoundedCornerShape(18.dp),
-                elevation = CardDefaults.cardElevation(5.dp)
+                colors = CardDefaults.cardColors(Color.White.copy(alpha = .97f)),
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(6.dp)
             ) {
-                Row(Modifier.padding(horizontal = 18.dp, vertical = 11.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text("المسافة", fontSize = 9.sp, color = Color(0xFF72807B))
-                        Text("${result.distanceKm} كم", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF078A60))
+                Column(Modifier.padding(horizontal = 18.dp, vertical = 13.dp)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) {
+                            Text("المسافة", fontSize = 9.sp, color = Color(0xFF72807B))
+                            Text("${result.distanceKm} كم", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF078A60))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("الوقت التقريبي", fontSize = 9.sp, color = Color(0xFF72807B))
+                            Text("${result.durationMin} دقيقة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("الأجرة التقديرية", fontSize = 9.sp, color = Color(0xFF72807B))
+                            Text("$estimatedFare ل.س", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
+                        }
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text("الوقت التقريبي", fontSize = 9.sp, color = Color(0xFF72807B))
-                        Text("${result.durationMin} دقيقة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-                    }
+                    Text(
+                        "السعر تقديري ويتغير حسب فئة السيارة والطلب الفعلي",
+                        modifier = Modifier.padding(top = 6.dp),
+                        fontSize = 8.sp,
+                        color = Color(0xFF8B9792)
+                    )
                 }
             }
         } ?: run {
