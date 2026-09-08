@@ -59,12 +59,8 @@ jobs:
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             VERSION_NAME="${GIT_TAG#v}"
-            VERSION_CODE=$(python3 - <<'PY'
-            import re, sys
-            v=sys.argv[1]
-            print(int(re.sub(r'[^0-9]', '', v.replace('.', '')) or '1'))
-            PY
-            "$VERSION_NAME")
+            VERSION_CODE="$(printf '%s' "$VERSION_NAME" | tr -cd '0-9')"
+            VERSION_CODE="${VERSION_CODE:-1}"
           else
             VERSION_NAME="$INPUT_VERSION_NAME"
             VERSION_CODE="$INPUT_VERSION_CODE"
