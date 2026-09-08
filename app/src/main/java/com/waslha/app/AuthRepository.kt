@@ -12,9 +12,9 @@ class AuthRepository(private val api: WaslhaApi, private val sessionStore: Sessi
         require(response.success && response.data != null) { response.message ?: "رمز التحقق غير صحيح" }
         val data = response.data
         val session = SessionData(
-            userId = data.user.id,
-            phone = data.user.phone,
-            role = data.user.role,
+            userId = data.userId,
+            phone = data.phone,
+            role = data.role,
             token = data.token
         )
         sessionStore.save(session)
