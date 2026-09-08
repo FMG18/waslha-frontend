@@ -14,6 +14,9 @@ interface WaslhaApi {
     @POST("/api/v1/auth/verify-code")
     suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
 
+    @POST("/api/v1/auth/google")
+    suspend fun signInWithGoogle(@Body body: GoogleAuthRequest): ApiEnvelope<GoogleSessionResponse>
+
     @GET("/api/v1/catalog/vehicle-types")
     suspend fun vehicleTypes(): ApiEnvelope<List<VehicleTypeDto>>
 
