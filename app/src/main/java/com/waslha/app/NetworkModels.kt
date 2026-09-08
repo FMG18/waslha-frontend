@@ -6,6 +6,18 @@ data class ApiEnvelope<T>(val success: Boolean, val data: T? = null, val message
 data class OtpRequest(val phone: String)
 data class OtpResponse(val expiresIn: Int, val devCode: String? = null)
 data class VerifyOtpRequest(val phone: String, val code: String)
+
+data class BackendUser(
+    val id: String,
+    val phone: String,
+    val role: String
+)
+
+data class VerifySessionResponse(
+    val user: BackendUser,
+    val token: String
+)
+
 data class SessionData(val userId: String, val phone: String, val role: String, val token: String)
 data class Coordinates(val lat: Double, val lng: Double)
 data class TripRequest(val customerId: String, val pickup: Coordinates, val destination: Coordinates, val vehicleType: String = "economy", val paymentMethod: String = "cash", val scheduledAt: Long? = null)
