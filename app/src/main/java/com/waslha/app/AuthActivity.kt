@@ -29,7 +29,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -58,6 +57,7 @@ private val AuthDanger = Color(0xFFB42318)
 class AuthActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ApiProvider.init(this)
 
         val sessionStore = SessionStore(this)
         if (sessionStore.isSignedIn) {
@@ -65,12 +65,9 @@ class AuthActivity : ComponentActivity() {
             return
         }
 
-        val repository = AuthRepository(ApiProvider.api, sessionStore).also { ApiProvider.init(this) }
+        val repository = AuthRepository(ApiProvider.api, sessionStore)
         setContent {
-            WaslhaAuthScreen(
-                repository = repository,
-                onAuthenticated = ::openMain
-            )
+            WaslhaAuthScreen(repository = repository, onAuthenticated = ::openMain)
         }
     }
 
@@ -85,10 +82,7 @@ class AuthActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WaslhaAuthScreen(
-    repository: AuthRepository,
-    onAuthenticated: () -> Unit
-) {
+private fun WaslhaAuthScreen(repository: AuthRepository, onAuthenticated: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val googleAuthClient = remember(context, repository) { GoogleAuthClient(context, repository) }
     val scope = rememberCoroutineScope()
@@ -106,10 +100,7 @@ private fun WaslhaAuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(34.dp))
-            Box(
-                Modifier.size(76.dp).background(AuthGreen, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(Modifier.size(76.dp).background(AuthGreen, CircleShape), contentAlignment = Alignment.Center) {
                 Text("و", fontSize = 42.sp, fontWeight = FontWeight.Black, color = Color.White)
             }
             Spacer(Modifier.height(12.dp))
@@ -124,19 +115,9 @@ private fun WaslhaAuthScreen(
                 elevation = CardDefaults.cardElevation(3.dp)
             ) {
                 Column(Modifier.padding(20.dp)) {
-                    Text(
-                        if (step) "تأكيد رقم الهاتف" else "أهلاً بك في وصلها",
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.Black,
-                        color = AuthDark
-                    )
+                    Text(if (step) "تأكيد رقم الهاتف" else "أهلاً بك في وصلها", fontSize = 25.sp, fontWeight = FontWeight.Black, color = AuthDark)
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        if (step) "أدخل رمز التحقق لإكمال تسجيل الدخول"
-                        else "اختر طريقة الدخول المناسبة لك",
-                        color = AuthMuted,
-                        fontSize = 12.sp
-                    )
+                    Text(if (step) "أدخل رمز التحقق لإكمال تسجيل الدخول" else "اختر طريقة الدخول المناسبة لك", color = AuthMuted, fontSize = 12.sp)
                     Spacer(Modifier.height(20.dp))
 
                     if (!step) {
@@ -157,13 +138,11 @@ private fun WaslhaAuthScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = AuthDark),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
                         ) {
-                            if (loading) {
-                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            } else {
-                                Box(
-                                    Modifier.size(30.dp).background(Color(0xFFF1F3F4), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) { Text("G", fontSize = 17.sp, fontWeight = FontWeight.Black) }
+                            if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            else {
+                                Box(Modifier.size(30.dp).background(Color(0xFFF1F3F4), CircleShape), contentAlignment = Alignment.Center) {
+                                    Text("G", fontSize = 17.sp, fontWeight = FontWeight.Black)
+                                }
                                 Spacer(Modifier.size(10.dp))
                                 Text("متابعة باستخدام Google", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
@@ -247,9 +226,7 @@ private fun WaslhaAuthScreen(
                             if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                             else Text("دخول إلى وصلها", fontWeight = FontWeight.Bold)
                         }
-                        TextButton(onClick = { step = false; otp = ""; devCode = null; error = null }) {
-                            Text("رجوع لطرق الدخول")
-                        }
+                        TextButton(onClick = { step = false; otp = ""; devCode = null; error = null }) { Text("رجوع لطرق الدخول") }
                     }
 
                     error?.let {
