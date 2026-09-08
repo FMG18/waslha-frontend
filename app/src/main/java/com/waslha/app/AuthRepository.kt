@@ -21,5 +21,22 @@ class AuthRepository(private val api: WaslhaApi, private val sessionStore: Sessi
         session
     }
 
+    suspend fun signInWithGoogle(idToken: String): Result<SessionData> = runCatching {
+        val response = api.signInWithGoogle(GoogleAuthRequest(idToken))
+        require(response.success && response.data != null) { response.message ?: "تعذر تسجيل الدخول باستخدام Google" }
+        val data = response.data
+        val session = SessionData(
+            userId = data.userId,
+            phone = data.phone,
+            role = data.role,
+            token = data.token,
+            email = data.email,
+            name = data.name,
+            picture = data.picture
+        )
+        sessionStore.save(session)
+        session
+    }
+
     fun signOut() = sessionStore.clear()
 }
