@@ -17,6 +17,12 @@ interface WaslhaApi {
     @POST("/api/v1/auth/google")
     suspend fun signInWithGoogle(@Body body: GoogleAuthRequest): ApiEnvelope<GoogleSessionResponse>
 
+    @GET("/api/v1/update")
+    suspend fun latestUpdate(
+        @Query("currentCode") currentCode: Int,
+        @Query("abi") abi: String
+    ): ApiEnvelope<AppUpdateDto>
+
     @GET("/api/v1/catalog/vehicle-types")
     suspend fun vehicleTypes(): ApiEnvelope<List<VehicleTypeDto>>
 
@@ -38,6 +44,23 @@ interface WaslhaApi {
     @POST("/api/v1/trips/{id}/cancel")
     suspend fun cancelTrip(@Path("id") id: String, @Body body: CancelTripRequest): ApiEnvelope<Trip>
 }
+
+data class AppUpdateDto(
+    val updateAvailable: Boolean,
+    val versionName: String = "",
+    val versionCode: Int = 0,
+    val releaseNotes: String = "",
+    val publishedAt: String? = null,
+    val mandatory: Boolean = false,
+    val apk: AppUpdateApkDto? = null
+)
+
+data class AppUpdateApkDto(
+    val name: String,
+    val size: Long,
+    val url: String,
+    val sha256: String? = null
+)
 
 data class VehicleTypeDto(val id: String, val name: String, val description: String, val seats: Int, val badge: String?)
 data class TripStatusRequest(val status: String)
