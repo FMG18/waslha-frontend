@@ -7,7 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlin.math.roundToInt
 
-private data class RouteResult(
+data class RouteResult(
     val points: List<Coordinates>,
     val distanceKm: Double,
     val durationMin: Int
