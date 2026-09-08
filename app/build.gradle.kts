@@ -12,8 +12,8 @@ android {
         applicationId = "com.waslha.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
     compileOptions {
@@ -21,12 +21,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions { jvmTarget = "17" }
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
 
-    kotlinOptions { jvmTarget = "17" }
+    dependenciesInfo {
+        includeInApk = false
+    }
 }
 
 dependencies {
@@ -43,6 +47,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
