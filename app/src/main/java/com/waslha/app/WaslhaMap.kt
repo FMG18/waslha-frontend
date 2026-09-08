@@ -33,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mapbox.geojson.Point
-import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
@@ -99,12 +98,6 @@ fun WaslhaRideMap(
             }
         }
 
-        MapEffect(pickup) { mapView ->
-            mapView.location.updateSettings {
-                enabled = true
-            }
-        }
-
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -138,7 +131,7 @@ fun WaslhaRideMap(
                         color = Color(0xFF10201B)
                     )
                     Text(
-                        "حرّك الخريطة حتى يصبح المكان المطلوب تحت الدبوس",
+                        "اضغط على المكان المطلوب لتثبيت الوجهة",
                         fontSize = 9.sp,
                         color = Color(0xFF72807B)
                     )
