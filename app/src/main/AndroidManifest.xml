@@ -5,8 +5,8 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:icon="@drawable/waslha_app_icon"
+        android:roundIcon="@drawable/waslha_app_icon"
         android:label="وصلها"
         android:supportsRtl="true"
         android:theme="@style/Theme.Waslha">
