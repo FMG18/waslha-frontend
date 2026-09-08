@@ -57,6 +57,11 @@ class PassengerTripViewModel(
         }
     }
 
+    fun reset() {
+        stopPolling()
+        _state.value = TripUiState.Idle
+    }
+
     private fun startPolling(id: String) {
         stopPolling()
         pollingJob = viewModelScope.launch {
