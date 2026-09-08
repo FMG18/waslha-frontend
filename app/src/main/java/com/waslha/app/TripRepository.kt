@@ -12,6 +12,31 @@ class TripRepository(private val api: WaslhaApi) {
         require(response.success && response.data != null) { response.message ?: "تعذر جلب الرحلة" }
         response.data
     }
+
+    suspend fun list(customerId: String? = null): Result<List<Trip>> = runCatching {
+        val response = api.trips(customerId)
+        require(response.success && response.data != null) { response.message ?: "تعذر جلب الرحلات" }
+        response.data
+    }
+
+    suspend fun estimate(pickup: Coordinates): Result<FareEstimate> = runCatching {
+        val payload = "{\"lat\":${pickup.lat},\"lng\":${pickup.lng}}"
+        val response = api.estimate(payload)
+        require(response.success && response.data != null) { response.message ?: "تعذر حساب الأجرة" }
+        response.data
+    }
+
+    suspend fun updateStatus(id: String, status: String): Result<Trip> = runCatching {
+        val response = api.updateTripStatus(id, TripStatusRequest(status))
+        require(response.success && response.data != null) { response.message ?: "تعذر تحديث حالة الرحلة" }
+        response.data
+    }
+
+    suspend fun cancel(id: String, reason: String): Result<Trip> = runCatching {
+        val response = api.cancelTrip(id, CancelTripRequest(reason))
+        require(response.success && response.data != null) { response.message ?: "تعذر إلغاء الرحلة" }
+        response.data
+    }
 }
 
 fun Trip.statusLabel(): String = when (status) {
