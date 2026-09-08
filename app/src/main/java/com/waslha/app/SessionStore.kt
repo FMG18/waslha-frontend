@@ -1,9 +1,11 @@
 package com.waslha.app
 
 import android.content.Context
+import android.content.Intent
 
 class SessionStore(context: Context) {
-    private val prefs = context.getSharedPreferences("waslha_session", Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences("waslha_session", Context.MODE_PRIVATE)
 
     val token: String? get() = prefs.getString("token", null)
     val userId: String? get() = prefs.getString("userId", null)
@@ -24,5 +26,12 @@ class SessionStore(context: Context) {
             .apply()
     }
 
-    fun clear() = prefs.edit().clear().apply()
+    fun clear() {
+        prefs.edit().clear().apply()
+        appContext.startActivity(
+            Intent(appContext, AuthActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+        )
+    }
 }
