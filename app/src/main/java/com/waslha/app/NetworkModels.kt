@@ -7,14 +7,10 @@ data class OtpRequest(val phone: String)
 data class OtpResponse(val expiresIn: Int, val devCode: String? = null)
 data class VerifyOtpRequest(val phone: String, val code: String)
 
-data class BackendUser(
-    val id: String,
-    val phone: String,
-    val role: String
-)
-
 data class VerifySessionResponse(
-    val user: BackendUser,
+    val userId: String,
+    val phone: String,
+    val role: String,
     val token: String
 )
 
