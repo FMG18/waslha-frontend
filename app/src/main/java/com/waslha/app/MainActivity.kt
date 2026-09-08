@@ -292,6 +292,7 @@ private fun PassengerShell(
     var settingsOpen by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf<Coordinates?>(null) }
     var locationDenied by remember { mutableStateOf(false) }
+    val locationScope = rememberCoroutineScope()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val tripViewModel: PassengerTripViewModel = viewModel()
@@ -345,7 +346,9 @@ private fun PassengerShell(
                         if (!permissionGranted) {
                             permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                         } else {
-                            location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+                            locationScope.launch {
+                                location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+                            }
                         }
                     },
                     onRequest = {
@@ -483,7 +486,7 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun VehicleCard(name: String, price: String, eta: String, selected: Boolean, onClick: () -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.VehicleCard(name: String, price: String, eta: String, selected: Boolean, onClick: () -> Unit) {
     Card(
         Modifier.weight(1f).clickable(onClick = onClick),
         colors = CardDefaults.cardColors(if (selected) GreenSoft else AppBg),
@@ -767,7 +770,7 @@ private fun TripsScreen(customerId: String?) {
 }
 
 @Composable
-private fun EmptyTrips(title: String, message: String) {
+private fun androidx.compose.foundation.layout.ColumnScope.EmptyTrips(title: String, message: String) {
     Column(Modifier.fillMaxWidth().weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Box(Modifier.size(88.dp).background(GreenSoft, CircleShape), Alignment.Center) {
             Icon(Icons.Default.CalendarMonth, null, tint = Green, modifier = Modifier.size(40.dp))
@@ -847,7 +850,7 @@ private fun SettingsScreen(onBack: () -> Unit) {
             SettingsRow("الإشعارات", "التحكم بتنبيهات الرحلات", Icons.Default.NotificationsNone)
             SettingsRow("اللغة", "العربية", Icons.Default.Tune)
             SettingsRow("الأمان", "إعدادات الحساب والحماية", Icons.Default.Security)
-            SettingsRow("عن وصلها", "الإصدار ومعلومات التطبيق", Icons.Default.Place)
+            SettingsRow("عن وصلها", "الإصدار ومعلومات التطبيق", Icons.Default.LocationOn)
         }
     }
 }
