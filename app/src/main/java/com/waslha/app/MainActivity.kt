@@ -1,6 +1,7 @@
 package com.waslha.app
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,7 +38,6 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
@@ -65,13 +65,13 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,8 +80,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
@@ -127,10 +125,14 @@ private fun WaslhaApp(sessionStore: SessionStore, locationProvider: LocationProv
     MaterialTheme {
         Surface(Modifier.fillMaxSize(), color = AppBg) {
             if (signedIn) {
-                PassengerShell(sessionStore, locationProvider) {
-                    authRepository.signOut()
-                    signedIn = false
-                }
+                PassengerShell(
+                    sessionStore = sessionStore,
+                    locationProvider = locationProvider,
+                    onLogout = {
+                        authRepository.signOut()
+                        signedIn = false
+                    }
+                )
             } else {
                 LoginScreen(authRepository) { signedIn = true }
             }
@@ -163,10 +165,10 @@ private fun LoginScreen(authRepository: AuthRepository, onAuthenticated: () -> U
             Spacer(Modifier.height(34.dp))
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(CardBg),
                 shape = RoundedCornerShape(28.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(3.dp)
             ) {
                 Column(Modifier.padding(22.dp)) {
                     Text(
@@ -189,8 +191,8 @@ private fun LoginScreen(authRepository: AuthRepository, onAuthenticated: () -> U
                             onValueChange = { phone = it.filter(Char::isDigit).take(15) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            placeholder = { Text("مثال: 093xxxxxxxx") },
                             label = { Text("رقم الهاتف") },
+                            placeholder = { Text("مثال: 093xxxxxxxx") },
                             shape = RoundedCornerShape(16.dp)
                         )
                         Spacer(Modifier.height(14.dp))
@@ -291,22 +293,27 @@ private fun PassengerShell(
     var location by remember { mutableStateOf<Coordinates?>(null) }
     var locationDenied by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val tripViewModel: PassengerTripViewModel = viewModel()
     val tripState by tripViewModel.state.collectAsState()
-    val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+    val permissionGrantedNow = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var permissionGranted by remember { mutableStateOf(hasPermission) }
+    var permissionGranted by remember { mutableStateOf(permissionGrantedNow) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         permissionGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true || result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (!permissionGranted) locationDenied = true
     }
 
     LaunchedEffect(Unit) {
-        if (!permissionGranted) permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        if (!permissionGranted) {
+            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
     }
+
     LaunchedEffect(permissionGranted) {
-        if (permissionGranted) location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+        if (permissionGranted) {
+            location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+        }
     }
 
     val pickup = location ?: Coordinates(33.5138, 36.2765)
@@ -317,7 +324,7 @@ private fun PassengerShell(
     Scaffold(
         containerColor = AppBg,
         bottomBar = {
-            if (showNav) PassengerBottomBar(tab) { tab = it }
+            if (showNav) PassengerBottomBar(tab, onTab = { tab = it })
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
@@ -326,8 +333,8 @@ private fun PassengerShell(
                 tripFlow -> TripFlowScreen(
                     state = tripState,
                     onCancel = { id, reason -> tripViewModel.cancelTrip(id, reason) },
-                    onBack = { tripViewModel.clear() },
-                    onRefresh = { activeTrip?.let(tripViewModel::loadTrip) }
+                    onBack = { tripViewModel.reset() },
+                    onRefresh = { activeTrip?.let { tripViewModel.loadTrip(it.id) } }
                 )
                 tab == 0 -> HomeScreen(
                     destination = destination,
@@ -335,20 +342,24 @@ private fun PassengerShell(
                     locationDenied = locationDenied,
                     onDestination = { destinationOpen = true },
                     onRefreshLocation = {
-                        if (!permissionGranted) permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                        else location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+                        if (!permissionGranted) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        } else {
+                            location = locationProvider.lastKnown()?.let { Coordinates(it.latitude, it.longitude) }
+                        }
                     },
                     onRequest = {
-                        val selected = destination ?: return@HomeScreen
-                        tripViewModel.createTrip(
-                            TripRequest(
-                                customerId = sessionStore.userId ?: "guest",
-                                pickup = pickup,
-                                destination = selected.coordinates,
-                                vehicleType = "economy",
-                                paymentMethod = "cash"
+                        destination?.let { selected ->
+                            tripViewModel.createTrip(
+                                TripRequest(
+                                    customerId = sessionStore.userId ?: "guest",
+                                    pickup = pickup,
+                                    destination = selected.coordinates,
+                                    vehicleType = "economy",
+                                    paymentMethod = "cash"
+                                )
                             )
-                        )
+                        }
                     }
                 )
                 tab == 1 -> TripsScreen(sessionStore.userId)
@@ -376,7 +387,7 @@ private fun HomeScreen(
     onRequest: () -> Unit
 ) {
     var selectedType by remember { mutableIntStateOf(0) }
-    val vehicleTypes = listOf(
+    val vehicles = listOf(
         Triple("اقتصادي", "3,500 ل.س", "3–5 د"),
         Triple("مريح", "5,000 ل.س", "4–6 د"),
         Triple("عائلي", "6,500 ل.س", "5–8 د")
@@ -392,8 +403,8 @@ private fun HomeScreen(
                 Text("موقع الانطلاق", fontWeight = FontWeight.Black, color = Ink, fontSize = 18.sp)
                 Text("${"%.4f".format(pickup.lat)} • ${"%.4f".format(pickup.lng)}", color = Muted, fontSize = 10.sp)
             }
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(1.dp)) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp)) {
                     Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(9.dp).background(Green, CircleShape))
                         Spacer(Modifier.width(8.dp))
@@ -405,7 +416,7 @@ private fun HomeScreen(
                 IconButton(onClick = {}) { Icon(Icons.Default.NotificationsNone, "الإشعارات", tint = Ink) }
             }
             if (locationDenied) {
-                Card(Modifier.align(Alignment.BottomCenter).padding(14.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(14.dp)) {
+                Card(Modifier.align(Alignment.BottomCenter).padding(14.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(14.dp)) {
                     Text("فعّل إذن الموقع للحصول على نقطة انطلاق أدق", Modifier.padding(10.dp), color = Muted, fontSize = 10.sp)
                 }
             }
@@ -415,9 +426,9 @@ private fun HomeScreen(
             Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             colors = CardDefaults.cardColors(CardBg),
-            elevation = CardDefaults.cardElevation(6.dp)
+            elevation = CardDefaults.cardElevation(7.dp)
         ) {
-            Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp).navigationBarsPadding()) {
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("وين نوصلك؟", fontSize = 26.sp, fontWeight = FontWeight.Black, color = Ink)
@@ -447,11 +458,11 @@ private fun HomeScreen(
                         Icon(Icons.Default.ChevronLeft, null, tint = Muted)
                     }
                 }
-                Spacer(Modifier.height(13.dp))
+                Spacer(Modifier.height(12.dp))
                 Text("اختار فئة السيارة", fontWeight = FontWeight.Black, color = Ink)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    vehicleTypes.forEachIndexed { index, item ->
+                    vehicles.forEachIndexed { index, item ->
                         VehicleCard(item.first, item.second, item.third, index == selectedType) { selectedType = index }
                     }
                 }
@@ -530,8 +541,8 @@ private fun TripFlowScreen(
 
     when (state) {
         TripUiState.Idle -> Unit
-        TripUiState.Loading -> CenterState("نرسل طلبك الآن", "جاري البحث عن أقرب كابتن", loading = true, onAction = onBack, actionText = "إلغاء")
-        is TripUiState.Error -> CenterState("تعذر تنفيذ الطلب", state.message, loading = false, onAction = onBack, actionText = "العودة للرئيسية")
+        TripUiState.Loading -> CenterTripState("نرسل طلبك الآن", "جاري البحث عن أقرب كابتن", true, onBack, "إلغاء")
+        is TripUiState.Error -> CenterTripState("تعذر تنفيذ الطلب", state.message, false, onBack, "العودة للرئيسية")
         is TripUiState.Success -> {
             val trip = state.trip
             Column(Modifier.fillMaxSize().padding(18.dp)) {
@@ -564,14 +575,14 @@ private fun TripFlowScreen(
                             }
                             Text("${trip.estimatedFare} ${trip.currency}", color = Green, fontWeight = FontWeight.Black)
                         }
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(9.dp))
                         RouteRow("الانطلاق", "${trip.pickup.lat}, ${trip.pickup.lng}", true)
                         RouteRow("الوجهة", "${trip.destination.lat}, ${trip.destination.lng}", false)
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(9.dp))
                         TripStatusRow(trip.status)
-                        if (trip.driver != null) {
-                            Spacer(Modifier.height(10.dp))
-                            DriverRow(trip.driver)
+                        trip.driver?.let {
+                            Spacer(Modifier.height(9.dp))
+                            DriverRow(it)
                         }
                         Spacer(Modifier.height(10.dp))
                         if (trip.status in listOf("searching", "driver_assigned", "arriving", "in_progress")) {
@@ -579,7 +590,9 @@ private fun TripFlowScreen(
                                 Text("إلغاء الرحلة")
                             }
                         } else {
-                            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) { Text("العودة للرئيسية") }
+                            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
+                                Text("العودة للرئيسية")
+                            }
                         }
                     }
                 }
@@ -600,7 +613,7 @@ private fun TripFlowScreen(
 }
 
 @Composable
-private fun CenterState(title: String, message: String, loading: Boolean, onAction: () -> Unit, actionText: String) {
+private fun CenterTripState(title: String, message: String, loading: Boolean, onAction: () -> Unit, actionText: String) {
     Column(Modifier.fillMaxSize().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(90.dp))
         Box(Modifier.size(122.dp).background(GreenSoft, CircleShape), Alignment.Center) {
@@ -612,7 +625,9 @@ private fun CenterState(title: String, message: String, loading: Boolean, onActi
         Spacer(Modifier.height(6.dp))
         Text(message, color = Muted, fontSize = 12.sp)
         Spacer(Modifier.height(25.dp))
-        OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(actionText) }
+        OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Text(actionText)
+        }
     }
 }
 
@@ -678,7 +693,9 @@ private fun CancelTripDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit)
                         Modifier.fillMaxWidth().clickable { reason = it },
                         colors = CardDefaults.cardColors(if (reason == it) GreenSoft else AppBg),
                         shape = RoundedCornerShape(12.dp)
-                    ) { Text(it, Modifier.padding(11.dp), fontSize = 12.sp, fontWeight = if (reason == it) FontWeight.Bold else FontWeight.Normal) }
+                    ) {
+                        Text(it, Modifier.padding(11.dp), fontSize = 12.sp, fontWeight = if (reason == it) FontWeight.Bold else FontWeight.Normal)
+                    }
                 }
             }
         },
@@ -752,7 +769,9 @@ private fun TripsScreen(customerId: String?) {
 @Composable
 private fun EmptyTrips(title: String, message: String) {
     Column(Modifier.fillMaxWidth().weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(88.dp).background(GreenSoft, CircleShape), Alignment.Center) { Icon(Icons.Default.CalendarMonth, null, tint = Green, modifier = Modifier.size(40.dp)) }
+        Box(Modifier.size(88.dp).background(GreenSoft, CircleShape), Alignment.Center) {
+            Icon(Icons.Default.CalendarMonth, null, tint = Green, modifier = Modifier.size(40.dp))
+        }
         Spacer(Modifier.height(13.dp))
         Text(title, fontWeight = FontWeight.Black, color = Ink, fontSize = 19.sp)
         Text(message, color = Muted, fontSize = 11.sp)
@@ -799,7 +818,9 @@ private fun AccountItem(title: String, subtitle: String, icon: androidx.compose.
         shape = RoundedCornerShape(17.dp)
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).background(GreenSoft, CircleShape), Alignment.Center) { Icon(icon, null, tint = Green, modifier = Modifier.size(21.dp)) }
+            Box(Modifier.size(42.dp).background(GreenSoft, CircleShape), Alignment.Center) {
+                Icon(icon, null, tint = Green, modifier = Modifier.size(21.dp))
+            }
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.Bold, color = Ink, fontSize = 13.sp)
@@ -815,7 +836,12 @@ private fun AccountItem(title: String, subtitle: String, icon: androidx.compose.
 private fun SettingsScreen(onBack: () -> Unit) {
     Scaffold(
         containerColor = AppBg,
-        topBar = { TopAppBar(title = { Text("الإعدادات", fontWeight = FontWeight.Black) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع") } }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("الإعدادات", fontWeight = FontWeight.Black) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع") } }
+            )
+        }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
             SettingsRow("الإشعارات", "التحكم بتنبيهات الرحلات", Icons.Default.NotificationsNone)
