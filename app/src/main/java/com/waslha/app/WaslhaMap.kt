@@ -35,13 +35,10 @@ import androidx.compose.ui.unit.sp
 import com.mapbox.geojson.Point
 import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.MapboxMap
-import com.mapbox.maps.extension.compose.animation.viewport.cameraOptions
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
 import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
-import com.mapbox.maps.plugin.animation.camera
-import com.mapbox.maps.plugin.gestures.gestures
-import com.mapbox.maps.plugin.locationcomponent.location
-import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.CameraOptions
 
 @Composable
 fun WaslhaRideMap(
@@ -55,13 +52,10 @@ fun WaslhaRideMap(
     var routeResult by remember(destination, pickup) { mutableStateOf<RouteResult?>(null) }
     var routeLoading by remember(destination, pickup) { mutableStateOf(false) }
     var routeError by remember(destination, pickup) { mutableStateOf<String?>(null) }
-    var currentCenter by remember(pickup, destination) {
-        mutableStateOf(destination ?: pickup)
-    }
 
     val viewport = rememberMapViewportState {
         setCameraOptions {
-            center(Point.fromLngLat(currentCenter.lng, currentCenter.lat))
+            center(Point.fromLngLat(pickup.lng, pickup.lat))
             zoom(13.5)
             pitch(0.0)
             bearing(0.0)
@@ -69,14 +63,13 @@ fun WaslhaRideMap(
     }
 
     LaunchedEffect(pickup, destination, accessToken) {
-        currentCenter = destination ?: pickup
         routeResult = null
         routeError = null
         if (destination != null) {
             routeLoading = true
             fetchMapboxRoute(pickup, destination, accessToken)
-                .onSuccess { result -> routeResult = result }
-                .onFailure { routeError = it.message }
+                .onSuccess { routeResult = it }
+                .onFailure { routeError = it.message ?: "تعذر حساب المسار" }
             routeLoading = false
         }
     }
@@ -87,18 +80,29 @@ fun WaslhaRideMap(
             mapViewportState = viewport,
             style = { MapboxStandardStyle() },
             onMapClickListener = {
-                val center = viewport.cameraState.center
-                currentCenter = Coordinates(center.latitude(), center.longitude())
-                onDestinationPicked(currentCenter)
+                val center = viewport.cameraState?.center
+                if (center != null) {
+                    onDestinationPicked(Coordinates(center.latitude(), center.longitude()))
+                }
                 true
             }
-        )
+        ) {
+            routeResult?.let { result ->
+                if (result.points.size >= 2) {
+                    PolylineAnnotation(
+                        points = result.points.map { Point.fromLngLat(it.lng, it.lat) }
+                    ) {
+                        lineColor = Color(0xFF078A60)
+                        lineWidth = 5.0
+                    }
+                }
+            }
+        }
 
-        MapEffect(Unit) { mapView ->
-            mapView.location.enabled = true
-            mapView.gestures.rotateEnabled = true
-            mapView.gestures.pitchEnabled = false
-            mapView.camera.cancelAllAnimations()
+        MapEffect(pickup) { mapView ->
+            mapView.location.updateSettings {
+                enabled = true
+            }
         }
 
         Box(
@@ -141,15 +145,14 @@ fun WaslhaRideMap(
                 }
                 IconButton(
                     onClick = {
-                        viewport.easeTo(
-                            cameraOptions {
-                                center(Point.fromLngLat(pickup.lng, pickup.lat))
-                                zoom(15.0)
-                                pitch(0.0)
-                                bearing(0.0)
-                            }
+                        viewport.flyTo(
+                            CameraOptions.Builder()
+                                .center(Point.fromLngLat(pickup.lng, pickup.lat))
+                                .zoom(15.0)
+                                .pitch(0.0)
+                                .bearing(0.0)
+                                .build()
                         )
-                        currentCenter = pickup
                     }
                 ) {
                     Icon(Icons.Default.MyLocation, "موقعي الحالي", tint = Color(0xFF078A60))
@@ -159,9 +162,7 @@ fun WaslhaRideMap(
 
         routeResult?.let { result ->
             Card(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(14.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
                 colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
                 shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(5.dp)
@@ -178,8 +179,8 @@ fun WaslhaRideMap(
                 }
             }
         } ?: run {
-            if (routeLoading) {
-                Card(
+            when {
+                routeLoading -> Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
                     colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
                     shape = RoundedCornerShape(16.dp)
@@ -189,8 +190,7 @@ fun WaslhaRideMap(
                         Text(" نحسب أقرب طريق...", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-            } else if (routeError != null) {
-                Card(
+                routeError != null -> Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
                     colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
                     shape = RoundedCornerShape(16.dp)
