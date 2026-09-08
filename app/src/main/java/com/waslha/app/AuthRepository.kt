@@ -13,4 +13,6 @@ class AuthRepository(private val api: WaslhaApi, private val sessionStore: Sessi
         sessionStore.save(response.data)
         response.data
     }
+
+    fun signOut() = sessionStore.clear()
 }
