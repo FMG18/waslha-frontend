@@ -1,5 +1,19 @@
-# Waslha Android
+# وصلها — Waslha Android
 
-Native Android taxi application for Waslha.
+تطبيق Android أصلي لمنصة وصلها للتكسي فقط. ليس موقعاً مغلفاً داخل WebView.
 
-This repository intentionally uses **main** as the only development branch.
+## الرؤية
+- تجربة راكب احترافية مبنية حول الخريطة والرحلة.
+- تحديد الانطلاق والوجهة بالدبوس والبحث.
+- رحلة مباشرة مع حالات واضحة من الطلب حتى الوصول.
+- هوية بصرية موحدة، RTL، وحالات تحميل/خطأ/فراغ حقيقية.
+- قابلية التوسع لاحقاً إلى تطبيق الكابتن ومنظومة الإدارة عبر الـBackend.
+
+## البنية الحالية
+- Kotlin + Jetpack Compose
+- Android SDK 26+
+- Material 3
+- فصل واضح بين واجهة التطبيق وطبقة الـAPI
+
+## مبدأ العمل
+كل التطويرات لهذا المستودع تتم على `main` فقط. لا يتم إنشاء فروع تطويرية أخرى.
