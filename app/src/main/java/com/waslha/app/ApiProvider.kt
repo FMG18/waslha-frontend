@@ -1,5 +1,6 @@
 package com.waslha.app
 
+import android.content.Context
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -22,15 +23,21 @@ private class AuthInterceptor(private val session: SessionStore) : Interceptor {
 }
 
 object ApiProvider {
+    private var appContext: Context? = null
     private val logger = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
 
-    fun create(context: android.content.Context): WaslhaApi {
-        val session = SessionStore(context.applicationContext)
+    lateinit var api: WaslhaApi
+        private set
+
+    fun init(context: Context) {
+        if (::api.isInitialized) return
+        appContext = context.applicationContext
+        val session = SessionStore(appContext!!)
         val client = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(session))
             .addInterceptor(logger)
             .build()
-        return Retrofit.Builder()
+        api = Retrofit.Builder()
             .baseUrl(ApiConfig.BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
