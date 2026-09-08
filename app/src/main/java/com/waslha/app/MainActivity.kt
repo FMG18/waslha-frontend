@@ -111,6 +111,7 @@ private val DamascusPlaces = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ApiProvider.init(this)
         val sessionStore = SessionStore(this)
         val locationProvider = LocationProvider(this)
         setContent { WaslhaApp(sessionStore, locationProvider) }
@@ -755,122 +756,5 @@ private fun androidx.compose.foundation.layout.ColumnScope.EmptyTrips(title: Str
         Spacer(Modifier.height(13.dp))
         Text(title, fontWeight = FontWeight.Black, color = Ink, fontSize = 19.sp)
         Text(message, color = Muted, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun ProfileScreen(sessionStore: SessionStore, onSettings: () -> Unit, onLogout: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        Spacer(Modifier.height(18.dp))
-        Text("حسابي", fontSize = 29.sp, fontWeight = FontWeight.Black, color = Ink)
-        Spacer(Modifier.height(14.dp))
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(23.dp)) {
-            Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(60.dp).background(Green, CircleShape), Alignment.Center) {
-                    Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(31.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("عميل وصلها", fontWeight = FontWeight.Black, color = Ink, fontSize = 17.sp)
-                    Text(sessionStore.phone ?: "رقم الهاتف غير متاح", color = Muted, fontSize = 11.sp)
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        AccountItem("الإشعارات", "تنبيهات الرحلات والعروض", Icons.Default.NotificationsNone)
-        AccountItem("طرق الدفع", "الدفع النقدي والخيارات القادمة", Icons.Default.Tune)
-        AccountItem("الأمان والخصوصية", "إدارة أمان الحساب", Icons.Default.Security)
-        AccountItem("الإعدادات", "اللغة والتفضيلات", Icons.Default.Settings, onSettings)
-        Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
-            Icon(Icons.Default.Logout, null)
-            Spacer(Modifier.width(7.dp))
-            Text("تسجيل الخروج", color = Danger, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun AccountItem(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: (() -> Unit)? = null) {
-    Card(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        colors = CardDefaults.cardColors(CardBg),
-        shape = RoundedCornerShape(17.dp)
-    ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).background(GreenSoft, CircleShape), Alignment.Center) {
-                Icon(icon, null, tint = Green, modifier = Modifier.size(21.dp))
-            }
-            Spacer(Modifier.width(11.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, color = Ink, fontSize = 13.sp)
-                Text(subtitle, color = Muted, fontSize = 10.sp)
-            }
-            Icon(Icons.Default.ChevronLeft, null, tint = Muted)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsScreen(onBack: () -> Unit) {
-    Scaffold(
-        containerColor = AppBg,
-        topBar = {
-            TopAppBar(
-                title = { Text("الإعدادات", fontWeight = FontWeight.Black) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع") } }
-            )
-        }
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
-            SettingsRow("الإشعارات", "التحكم بتنبيهات الرحلات", Icons.Default.NotificationsNone)
-            SettingsRow("اللغة", "العربية", Icons.Default.Tune)
-            SettingsRow("الأمان", "إعدادات الحساب والحماية", Icons.Default.Security)
-            SettingsRow("عن وصلها", "الإصدار ومعلومات التطبيق", Icons.Default.LocationOn)
-        }
-    }
-}
-
-@Composable
-private fun SettingsRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Card(Modifier.fillMaxWidth().padding(vertical = 5.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(17.dp)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Green, modifier = Modifier.size(23.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, color = Ink)
-                Text(subtitle, color = Muted, fontSize = 10.sp)
-            }
-            Icon(Icons.Default.ChevronLeft, null, tint = Muted)
-        }
-    }
-}
-
-@Composable
-private fun PassengerBottomBar(tab: Int, onTab: (Int) -> Unit) {
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp,
-        modifier = Modifier.navigationBarsPadding()
-    ) {
-        NavigationBarItem(
-            selected = tab == 0,
-            onClick = { onTab(0) },
-            icon = { Icon(Icons.Default.Home, null) },
-            label = { Text("الرئيسية") }
-        )
-        NavigationBarItem(
-            selected = tab == 1,
-            onClick = { onTab(1) },
-            icon = { Icon(Icons.Default.DirectionsCar, null) },
-            label = { Text("رحلاتي") }
-        )
-        NavigationBarItem(
-            selected = tab == 2,
-            onClick = { onTab(2) },
-            icon = { Icon(Icons.Default.Person, null) },
-            label = { Text("حسابي") }
-        )
     }
 }
