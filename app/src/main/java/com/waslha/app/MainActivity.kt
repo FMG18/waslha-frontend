@@ -360,7 +360,7 @@ private fun PassengerShell(
                                 TripRequest(
                                     customerId = sessionStore.userId ?: "guest",
                                     pickup = pickup,
-                                    destination = selected.coordinates,
+                                    destination = mapDestination ?: selected.coordinates,
                                     vehicleType = "economy",
                                     paymentMethod = "cash"
                                 )
