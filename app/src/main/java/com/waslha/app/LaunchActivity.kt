@@ -42,7 +42,7 @@ class LaunchActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 delay(950)
-                startActivity(Intent(this@LaunchActivity, AuthActivity::class.java))
+                startActivity(Intent(this@LaunchActivity, UpdateGateActivity::class.java))
                 finish()
             }
 
