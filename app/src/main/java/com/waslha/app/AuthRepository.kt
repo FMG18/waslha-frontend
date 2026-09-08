@@ -10,8 +10,15 @@ class AuthRepository(private val api: WaslhaApi, private val sessionStore: Sessi
     suspend fun verifyCode(phone: String, code: String): Result<SessionData> = runCatching {
         val response = api.verifyCode(VerifyOtpRequest(phone, code))
         require(response.success && response.data != null) { response.message ?: "رمز التحقق غير صحيح" }
-        sessionStore.save(response.data)
-        response.data
+        val data = response.data
+        val session = SessionData(
+            userId = data.user.id,
+            phone = data.user.phone,
+            role = data.user.role,
+            token = data.token
+        )
+        sessionStore.save(session)
+        session
     }
 
     fun signOut() = sessionStore.clear()
