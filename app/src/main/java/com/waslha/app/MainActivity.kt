@@ -292,6 +292,7 @@ private fun PassengerShell(
     var settingsOpen by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf<Coordinates?>(null) }
     var locationDenied by remember { mutableStateOf(false) }
+    var mapDestination by remember { mutableStateOf<Coordinates?>(null) }
     val locationScope = rememberCoroutineScope()
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -342,6 +343,8 @@ private fun PassengerShell(
                     pickup = pickup,
                     locationDenied = locationDenied,
                     onDestination = { destinationOpen = true },
+                    mapDestination = mapDestination,
+                    onMapDestinationPicked = { mapDestination = it },
                     onRefreshLocation = {
                         if (!permissionGranted) {
                             permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
@@ -375,7 +378,7 @@ private fun PassengerShell(
         DestinationPicker(
             selected = destination,
             onDismiss = { destinationOpen = false },
-            onSelect = { destination = it; destinationOpen = false }
+            onSelect = { destination = it; mapDestination = it.coordinates; destinationOpen = false }
         )
     }
 }
@@ -383,9 +386,11 @@ private fun PassengerShell(
 @Composable
 private fun HomeScreen(
     destination: PlaceOption?,
+    mapDestination: Coordinates?,
     pickup: Coordinates,
     locationDenied: Boolean,
     onDestination: () -> Unit,
+    onMapDestinationPicked: (Coordinates) -> Unit,
     onRefreshLocation: () -> Unit,
     onRequest: () -> Unit
 ) {
@@ -397,15 +402,13 @@ private fun HomeScreen(
     )
 
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().weight(1f).background(MapBg)) {
-            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(94.dp).background(Green.copy(alpha = .14f), CircleShape), Alignment.Center) {
-                    Icon(Icons.Default.LocationOn, null, tint = Green, modifier = Modifier.size(52.dp))
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("موقع الانطلاق", fontWeight = FontWeight.Black, color = Ink, fontSize = 18.sp)
-                Text("${"%.4f".format(pickup.lat)} • ${"%.4f".format(pickup.lng)}", color = Muted, fontSize = 10.sp)
-            }
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            WaslhaRideMap(
+                pickup = pickup,
+                destination = mapDestination ?: destination?.coordinates,
+                modifier = Modifier.fillMaxSize(),
+                onDestinationPicked = onMapDestinationPicked
+            )
             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp)) {
                     Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
