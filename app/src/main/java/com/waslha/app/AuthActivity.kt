@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,9 +128,10 @@ private fun WaslhaAuthScreen(repository: AuthRepository, onAuthenticated: () -> 
                                 loading = true
                                 error = null
                                 scope.launch {
-                                    googleAuthClient.signIn()
+                                    val result = googleAuthClient.signIn()
+                                    result
                                         .onSuccess { onAuthenticated() }
-                                        .onFailure { error = "تعذر تسجيل الدخول باستخدام Google" }
+                                        .onFailure { error = googleAuthClient.userMessage(it) }
                                     loading = false
                                 }
                             },
