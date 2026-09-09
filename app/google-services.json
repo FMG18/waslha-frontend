@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "402670996635",
+    "project_id": "waslha-ddb97",
+    "storage_bucket": "waslha-ddb97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:402670996635:android:dc3b616f7a1e06337b0a3e",
+        "android_client_info": {
+          "package_name": "com.waslha.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "402670996635-cojr4khl41le3ermkojkojdkv03arpd6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvRUpcPLQpGPclxN1NcsgIMfH7RFUtoqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "402670996635-cojr4khl41le3ermkojkojdkv03arpd6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
