@@ -14,6 +14,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "402670996635-8rh7n5vjlohbs41ld8dhf9bcoifh11j8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.waslha.app",
+            "certificate_hash": "fc4343bc324e4cd404e36beba43543572293a4d5"
+          }
+        },
+        {
+          "client_id": "402670996635-es64psdbdug0esuuc9tl7te1umm5oh95.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.waslha.app",
+            "certificate_hash": "eb965c9f826c96c455dda882789641333dca33ed"
+          }
+        },
+        {
+          "client_id": "402670996635-qi2nuat5dk135m3esclhm9dig7bpeqat.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.waslha.app",
+            "certificate_hash": "ea0f6c8b3224c11429a392355211e07f1fb17468"
+          }
+        },
+        {
           "client_id": "402670996635-cojr4khl41le3ermkojkojdkv03arpd6.apps.googleusercontent.com",
           "client_type": 3
         }
