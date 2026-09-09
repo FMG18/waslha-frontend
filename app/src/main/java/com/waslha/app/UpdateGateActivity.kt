@@ -18,7 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +52,8 @@ class UpdateGateActivity : ComponentActivity() {
         var downloading by remember { mutableStateOf(false) }
         var progress by remember { mutableIntStateOf(0) }
         var downloadId by remember { mutableLongStateOf(-1L) }
+        var verifiedFile by remember { mutableStateOf<java.io.File?>(null) }
+        var needsInstallPermission by remember { mutableStateOf(false) }
 
         fun continueToApp() {
             val target = if (sessionStore.isSignedIn) MainActivity::class.java else AuthActivity::class.java
@@ -60,43 +64,44 @@ class UpdateGateActivity : ComponentActivity() {
         }
 
         LaunchedEffect(Unit) {
+            updater.cleanupStaleDownloads()
             updater.check()
                 .onSuccess { result -> update = result }
                 .onFailure { error = true }
             checking = false
         }
 
+        DisposableEffect(Unit) {
+            onDispose { }
+        }
+
         LaunchedEffect(downloading, downloadId) {
             if (!downloading || downloadId <= 0L) return@LaunchedEffect
             while (downloading) {
-                val query = android.app.DownloadManager.Query().setFilterById(downloadId)
-                val manager = getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
-                manager.query(query).use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                        val total = cursor.getLong(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        if (total > 0) progress = ((downloaded * 100L) / total).toInt().coerceIn(0, 100)
-                        val status = cursor.getInt(cursor.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS))
-                        when (status) {
-                            android.app.DownloadManager.STATUS_SUCCESSFUL -> {
-                                val file = updater.downloadFile(downloadId)
-                                val item = update
-                                if (file != null && item != null && updater.verifySha256(file, item.apk?.sha256)) {
-                                    downloading = false
-                                    updater.install(file)
-                                } else {
-                                    downloading = false
-                                    error = true
-                                }
-                            }
-                            android.app.DownloadManager.STATUS_FAILED -> {
-                                downloading = false
-                                error = true
-                            }
+                val status = updater.downloadStatus(downloadId)
+                val (downloaded, total) = updater.downloadProgress(downloadId)
+                if (total > 0L) progress = ((downloaded * 100L) / total).toInt().coerceIn(0, 100)
+
+                when (status) {
+                    android.app.DownloadManager.STATUS_SUCCESSFUL -> {
+                        val file = updater.downloadFile(downloadId)
+                        val item = update
+                        if (file != null && item != null && updater.verifySha256(file, item.apk?.sha256)) {
+                            downloading = false
+                            verifiedFile = file
+                            needsInstallPermission = !updater.canInstallPackages()
+                            if (!needsInstallPermission) updater.install(file)
+                        } else {
+                            downloading = false
+                            error = true
                         }
                     }
+                    android.app.DownloadManager.STATUS_FAILED -> {
+                        downloading = false
+                        error = true
+                    }
                 }
-                delay(300)
+                delay(500)
             }
         }
 
@@ -119,7 +124,25 @@ class UpdateGateActivity : ComponentActivity() {
                             Spacer(Modifier.height(18.dp))
                             LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(12.dp))
-                            Text("التنزيل يتم عبر مدير Android ويمكنه الاستمرار عند انقطاع الاتصال.", fontSize = 12.sp)
+                            Text("التنزيل يتم عبر مدير Android ويستأنف بعد انقطاع الاتصال.", fontSize = 12.sp)
+                        }
+                        needsInstallPermission && verifiedFile != null -> {
+                            Text("التحديث جاهز للتثبيت", fontSize = 26.sp, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.height(10.dp))
+                            Text("اسمح لوصلها بتثبيت التحديث مرة واحدة من إعدادات Android.", fontSize = 14.sp, textAlign = TextAlign.Start)
+                            Spacer(Modifier.height(22.dp))
+                            Button(
+                                onClick = {
+                                    needsInstallPermission = false
+                                    val file = verifiedFile
+                                    if (file != null && !updater.install(file)) needsInstallPermission = true
+                                },
+                                modifier = Modifier.fillMaxWidth().height(54.dp)
+                            ) { Text("متابعة التثبيت", fontWeight = FontWeight.Bold) }
+                            Spacer(Modifier.height(10.dp))
+                            OutlinedButton(onClick = ::continueToApp, modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                                Text("لاحقاً")
+                            }
                         }
                         update != null -> {
                             val item = update!!
@@ -136,6 +159,9 @@ class UpdateGateActivity : ComponentActivity() {
                             Button(
                                 onClick = {
                                     error = false
+                                    progress = 0
+                                    verifiedFile = null
+                                    needsInstallPermission = false
                                     downloadId = updater.downloadUpdate(item)
                                     downloading = true
                                 },
@@ -146,6 +172,16 @@ class UpdateGateActivity : ComponentActivity() {
                                 OutlinedButton(onClick = ::continueToApp, modifier = Modifier.fillMaxWidth().height(50.dp)) {
                                     Text("لاحقاً")
                                 }
+                            }
+                            if (error) {
+                                Spacer(Modifier.height(10.dp))
+                                Text("فشل تنزيل أو التحقق من ملف التحديث. حاول مرة أخرى.", fontSize = 12.sp)
+                                TextButton(onClick = {
+                                    error = false
+                                    progress = 0
+                                    downloadId = updater.downloadUpdate(item)
+                                    downloading = true
+                                }) { Text("إعادة المحاولة") }
                             }
                         }
                         else -> {
