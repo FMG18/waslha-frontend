@@ -69,6 +69,16 @@ jobs:
           echo "WASLHA_KEY_ALIAS=$WASLHA_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "WASLHA_KEY_PASSWORD=$WASLHA_KEY_PASSWORD" >> "$GITHUB_ENV"
 
+      - name: Print release signing fingerprints
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+        run: |
+          echo "=== RELEASE SIGNING FINGERPRINTS ==="
+          keytool -list -v -keystore "$WASLHA_KEYSTORE_FILE" -storepass "$WASLHA_KEYSTORE_PASSWORD" -alias "$WASLHA_KEY_ALIAS" \
+            | grep -E 'Alias name:|SHA1:|SHA256:' || true
+
       - name: Resolve release version
         shell: bash
         env:
