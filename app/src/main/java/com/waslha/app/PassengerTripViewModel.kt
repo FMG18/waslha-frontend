@@ -16,9 +16,8 @@ sealed interface TripUiState {
     data class Error(val message: String) : TripUiState
 }
 
-class PassengerTripViewModel(
-    private val repository: TripRepository = TripRepository(ApiProvider.api)
-) : ViewModel() {
+class PassengerTripViewModel : ViewModel() {
+    private val repository by lazy { TripRepository(ApiProvider.api) }
     private val _state = MutableStateFlow<TripUiState>(TripUiState.Idle)
     val state: StateFlow<TripUiState> = _state.asStateFlow()
 
