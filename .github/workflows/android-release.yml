@@ -1,4 +1,4 @@
-name: Release Android APKs
+name: Release Android APK
 
 on:
   push:
@@ -9,11 +9,11 @@ on:
       version_code:
         description: 'Android versionCode'
         required: true
-        default: '4'
+        default: '131'
       version_name:
         description: 'Android versionName'
         required: true
-        default: '1.3.0'
+        default: '1.3.1'
 
 permissions:
   contents: write
@@ -65,9 +65,9 @@ jobs:
             VERSION_NAME="$INPUT_VERSION_NAME"
             VERSION_CODE="$INPUT_VERSION_CODE"
           fi
+          test "$VERSION_CODE" -gt 0 || { echo "Invalid versionCode"; exit 1; }
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "Release version: $VERSION_NAME ($VERSION_CODE)"
 
       - name: Set release version in Gradle
         shell: bash
@@ -77,8 +77,8 @@ jobs:
           import os, re
           p=Path('app/build.gradle.kts')
           s=p.read_text(encoding='utf-8')
-          s=re.sub(r'versionCode\s*=\s*\d+', f"versionCode = {os.environ['VERSION_CODE']}", s)
-          s=re.sub(r'versionName\s*=\s*"[^"]+"', f"versionName = \"{os.environ['VERSION_NAME']}\"", s)
+          s=re.sub(r'versionCode\s*=\s*\d+', f"versionCode = {os.environ['VERSION_CODE']}", s, count=1)
+          s=re.sub(r'versionName\s*=\s*"[^"]+"', f"versionName = \"{os.environ['VERSION_NAME']}\"", s, count=1)
           p.write_text(s, encoding='utf-8')
           PY
 
@@ -87,21 +87,17 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build release APKs by ABI
+      - name: Build one universal release APK
         run: gradle assembleRelease --stacktrace
 
       - name: Prepare release assets
         shell: bash
         run: |
           mkdir -p release-assets
-          shopt -s nullglob
-          apks=(app/build/outputs/apk/release/*.apk)
-          test ${#apks[@]} -gt 0 || { echo "No release APKs found"; exit 1; }
-          for apk in "${apks[@]}"; do
-            name=$(basename "$apk")
-            sha256sum "$apk" > "release-assets/$name.sha256"
-            cp "$apk" "release-assets/$name"
-          done
+          apk="app/build/outputs/apk/release/app-release.apk"
+          test -f "$apk" || { echo "Expected single APK not found: $apk"; find app/build/outputs/apk/release -maxdepth 2 -type f -print; exit 1; }
+          cp "$apk" release-assets/waslha.apk
+          sha256sum release-assets/waslha.apk > release-assets/waslha.apk.sha256
           printf '%s\n' "Version: $VERSION_NAME" "Version code: $VERSION_CODE" > release-assets/release-info.txt
 
       - name: Publish GitHub Release
