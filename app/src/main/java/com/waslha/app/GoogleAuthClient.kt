@@ -9,6 +9,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import java.security.SecureRandom
@@ -37,23 +38,37 @@ class GoogleAuthClient(
                 Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
             )
 
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setServerClientId(serverClientId)
-                .setFilterByAuthorizedAccounts(false)
-                .setAutoSelectEnabled(false)
-                .setNonce(nonce)
-                .build()
+            val credential = try {
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setServerClientId(serverClientId)
+                    .setFilterByAuthorizedAccounts(false)
+                    .setAutoSelectEnabled(false)
+                    .setNonce(nonce)
+                    .build()
 
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
 
-            val result = credentialManager.getCredential(
-                context = activityContext,
-                request = request
-            )
+                credentialManager.getCredential(
+                    context = activityContext,
+                    request = request
+                ).credential
+            } catch (_: NoCredentialException) {
+                val signInOption = GetSignInWithGoogleOption.Builder(serverClientId)
+                    .setNonce(nonce)
+                    .build()
 
-            val credential = result.credential
+                val fallbackRequest = GetCredentialRequest.Builder()
+                    .addCredentialOption(signInOption)
+                    .build()
+
+                credentialManager.getCredential(
+                    context = activityContext,
+                    request = fallbackRequest
+                ).credential
+            }
+
             require(
                 credential is CustomCredential &&
                     credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
@@ -72,7 +87,7 @@ class GoogleAuthClient(
     }
 
     fun userMessage(error: Throwable): String = when (error) {
-        is NoCredentialException -> "لم يتم العثور على حساب Google متاح. تأكد من إضافة حساب Google إلى الهاتف."
+        is NoCredentialException -> "تعذر فتح تسجيل Google. تأكد من تحديث Google Play services ثم حاول مرة أخرى."
         is GetCredentialCancellationException -> "تم إلغاء تسجيل الدخول باستخدام Google"
         else -> error.message?.takeIf { it.isNotBlank() }
             ?: "تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى."
