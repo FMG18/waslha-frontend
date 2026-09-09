@@ -10,14 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID || '402670996635-cojr4khl41le3ermkojkojdkv03arpd6.apps.googleusercontent.com' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Prepare Mapbox token resource
         shell: bash
         env:
@@ -26,31 +30,36 @@ jobs:
           test -n "$MAPBOX_PUBLIC_TOKEN" || { echo "MAPBOX_PUBLIC_TOKEN is not configured in repository variables"; exit 1; }
           mkdir -p app/src/main/res/values
           printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"mapbox_access_token\" translatable=\"false\">${MAPBOX_PUBLIC_TOKEN}</string>" '</resources>' > app/src/main/res/values/mapbox_access_token.xml
+
       - name: Prepare Google web client ID resource
         shell: bash
-        env:
-          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: |
+          test -n "$GOOGLE_WEB_CLIENT_ID" || { echo "GOOGLE_WEB_CLIENT_ID is empty"; exit 1; }
           mkdir -p app/src/main/res/values
-          if [ -n "$GOOGLE_WEB_CLIENT_ID" ]; then
-            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"google_web_client_id\" translatable=\"false\">${GOOGLE_WEB_CLIENT_ID}</string>" '</resources>' > app/src/main/res/values/google_auth.xml
-          else
-            echo "GOOGLE_WEB_CLIENT_ID is not configured; Google sign-in will remain disabled at runtime."
-          fi
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"google_web_client_id\" translatable=\"false\">${GOOGLE_WEB_CLIENT_ID}</string>" '</resources>' > app/src/main/res/values/google_auth.xml
+          echo "Google Web Client ID configured."
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Print debug signing fingerprints
-        shell: bash
-        run: |
-          echo "=== DEBUG SIGNING FINGERPRINTS ==="
-          DEBUG_KEYSTORE="$HOME/.config/.android/debug.keystore"
-          test -f "$DEBUG_KEYSTORE" || { echo "Debug keystore not found: $DEBUG_KEYSTORE"; exit 1; }
-          keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey \
-            | grep -E 'Alias name:|SHA1:|SHA-1:|SHA256:|SHA-256:'
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
+
+      - name: Print APK signing fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)
+          test -n "$APK" || { echo "Debug APK not found"; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner -print | sort -V | tail -n 1)
+          test -n "$APKSIGNER" || { echo "apksigner not found"; exit 1; }
+          echo "=== APK ==="
+          echo "$APK"
+          echo "=== SIGNING CERTIFICATES ==="
+          "$APKSIGNER" verify --print-certs "$APK"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
