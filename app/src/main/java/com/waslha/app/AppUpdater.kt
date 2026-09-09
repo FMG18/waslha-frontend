@@ -31,18 +31,26 @@ class AppUpdater(private val context: Context) {
         }
     }
 
+    fun cleanupStaleDownloads(maxAgeMs: Long = 24L * 60L * 60L * 1000L) {
+        val directory = File(appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Waslha/updates")
+        val now = System.currentTimeMillis()
+        directory.listFiles()?.forEach { file ->
+            if (file.isFile && now - file.lastModified() > maxAgeMs) file.delete()
+        }
+    }
+
     fun downloadUpdate(update: AppUpdateDto): Long {
         val apk = requireNotNull(update.apk)
         val oldId = prefs.getLong("download_id", -1L)
         val storedVersion = prefs.getString("version", null)
 
         if (oldId > 0L && storedVersion == update.versionName) {
-            val status = downloadStatus(oldId)
-            if (status == DownloadManager.STATUS_PENDING ||
-                status == DownloadManager.STATUS_RUNNING ||
-                status == DownloadManager.STATUS_PAUSED ||
-                status == DownloadManager.STATUS_SUCCESSFUL
-            ) return oldId
+            when (downloadStatus(oldId)) {
+                DownloadManager.STATUS_PENDING,
+                DownloadManager.STATUS_RUNNING,
+                DownloadManager.STATUS_PAUSED,
+                DownloadManager.STATUS_SUCCESSFUL -> return oldId
+            }
         }
 
         val request = DownloadManager.Request(Uri.parse(apk.url))
@@ -93,7 +101,7 @@ class AppUpdater(private val context: Context) {
     }
 
     fun verifySha256(file: File, expected: String?): Boolean {
-        if (expected.isNullOrBlank()) return false
+        if (expected.isNullOrBlank() || !file.isFile) return false
         val digest = MessageDigest.getInstance("SHA-256")
         FileInputStream(file).use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -118,11 +126,11 @@ class AppUpdater(private val context: Context) {
         }
     }
 
-    fun install(file: File) {
+    fun install(file: File): Boolean {
         require(file.exists()) { "ملف التحديث غير موجود" }
         if (!canInstallPackages()) {
             openInstallPermissionSettings()
-            return
+            return false
         }
         val uri = FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -131,6 +139,7 @@ class AppUpdater(private val context: Context) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         appContext.startActivity(intent)
+        return true
     }
 
     fun cleanup(file: File?) {
