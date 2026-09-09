@@ -1,76 +1,85 @@
 package com.waslha.app
 
 import android.app.Activity
-import android.content.Context
-import android.util.Base64
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import java.security.SecureRandom
-import kotlinx.coroutines.withTimeout
+import android.content.Intent
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
+import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class GoogleAuthClient(
-    private val context: Context,
+    private val activity: Activity,
     private val repository: AuthRepository
 ) {
-    private val credentialManager = CredentialManager.create(context)
-    private val secureRandom = SecureRandom()
+    companion object { const val REQUEST_CODE = 9017 }
 
-    suspend fun signIn(): Result<SessionData> = runCatching {
-        withTimeout(30_000L) {
-            val serverClientId = context.getString(R.string.google_web_client_id).trim()
-            require(serverClientId.isNotBlank() && !serverClientId.startsWith("REPLACE_")) {
-                "تسجيل الدخول باستخدام Google غير مهيأ بعد"
+    private val client: GoogleSignInClient
+    private var pending: ((Result<SessionData>) -> Unit)? = null
+
+    init {
+        val serverClientId = activity.getString(R.string.google_web_client_id).trim()
+        require(serverClientId.isNotBlank() && !serverClientId.startsWith("REPLACE_")) {
+            "تسجيل الدخول باستخدام Google غير مهيأ بعد"
+        }
+        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(serverClientId)
+            .build()
+        client = GoogleSignIn.getClient(activity, options)
+    }
+
+    suspend fun signIn(): Result<SessionData> = suspendCancellableCoroutine { continuation ->
+        if (pending != null) {
+            continuation.resume(Result.failure(IllegalStateException("تسجيل الدخول قيد التنفيذ")))
+            return@suspendCancellableCoroutine
+        }
+        pending = { result -> if (continuation.isActive) continuation.resume(result) }
+        continuation.invokeOnCancellation { pending = null }
+        try {
+            client.signOut().addOnCompleteListener {
+                if (continuation.isActive) activity.startActivityForResult(client.signInIntent, REQUEST_CODE)
             }
-
-            val activityContext = context as? Activity
-                ?: error("تعذر فتح نافذة Google من سياق التطبيق الحالي")
-
-            val nonceBytes = ByteArray(32).also(secureRandom::nextBytes)
-            val nonce = Base64.encodeToString(
-                nonceBytes,
-                Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
-            )
-
-            val signInOption = GetSignInWithGoogleOption.Builder(serverClientId)
-                .setNonce(nonce)
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(signInOption)
-                .build()
-
-            val credential = credentialManager.getCredential(
-                context = activityContext,
-                request = request
-            ).credential
-
-            require(
-                credential is CustomCredential &&
-                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-            ) { "لم يتم اختيار حساب Google صالح" }
-
-            val googleCredential = try {
-                GoogleIdTokenCredential.createFrom(credential.data)
-            } catch (_: GoogleIdTokenParsingException) {
-                error("تعذر قراءة بيانات حساب Google")
-            }
-
-            val idToken = googleCredential.idToken
-            require(idToken.isNotBlank()) { "تعذر الحصول على Google ID Token" }
-            repository.signInWithGoogle(idToken).getOrThrow()
+        } catch (t: Throwable) {
+            pending?.invoke(Result.failure(t)); pending = null
         }
     }
 
-    fun userMessage(error: Throwable): String = when (error) {
-        is NoCredentialException -> "تعذر فتح تسجيل Google. تأكد من وجود حساب Google وتحديث Google Play services ثم حاول مرة أخرى."
-        is GetCredentialCancellationException -> "تم إغلاق نافذة Google قبل إكمال تسجيل الدخول"
-        else -> error.message?.takeIf { it.isNotBlank() }
-            ?: "تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى."
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != REQUEST_CODE) return
+        val callback = pending ?: return
+        pending = null
+        if (data == null) {
+            callback(Result.failure(IllegalStateException("تم إغلاق نافذة Google قبل إكمال تسجيل الدخول")))
+            return
+        }
+        val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken.isNullOrBlank()) {
+                callback(Result.failure(IllegalStateException("لم تُرجع Google رمز تسجيل الدخول")))
+            } else {
+                callback(runCatching { repository.signInWithGoogle(idToken).getOrThrow() })
+            }
+        } catch (e: ApiException) {
+            val message = when (e.statusCode) {
+                CommonStatusCodes.CANCELED -> "تم إلغاء تسجيل الدخول باستخدام Google"
+                CommonStatusCodes.DEVELOPER_ERROR -> "إعداد Google للتطبيق غير صحيح أو بصمة APK غير مطابقة."
+                CommonStatusCodes.NETWORK_ERROR -> "تعذر الاتصال بخدمة Google. تحقق من الإنترنت."
+                else -> "تعذر تسجيل الدخول باستخدام Google (رمز ${e.statusCode})"
+            }
+            callback(Result.failure(IllegalStateException(message, e)))
+        } catch (e: Throwable) {
+            callback(Result.failure(e))
+        }
     }
+
+    fun userMessage(error: Throwable): String =
+        error.message?.takeIf { it.isNotBlank() }
+            ?: "تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى."
 }
