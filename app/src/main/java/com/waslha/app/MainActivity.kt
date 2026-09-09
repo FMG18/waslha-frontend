@@ -6,8 +6,8 @@ import androidx.activity.ComponentActivity
 
 /**
  * Stable authenticated entry point.
- * The full taxi experience lives in SafeTaxiActivity so the authentication
- * flow remains isolated from location, trip and UI initialization.
+ * Authentication stays isolated; the full taxi experience is launched only
+ * after a valid local session exists.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        startActivity(Intent(this, SafeTaxiActivity::class.java))
+        startActivity(Intent(this, TaxiBookingActivity::class.java))
         finish()
     }
 }
