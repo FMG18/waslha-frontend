@@ -23,6 +23,7 @@
         <activity android:name=".AuthActivity" android:exported="false" />
         <activity android:name=".GoogleSignInActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".SafeTaxiActivity" android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
