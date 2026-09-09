@@ -2,15 +2,16 @@ package com.waslha.app
 
 import android.app.Activity
 import android.content.Context
+import android.util.Base64
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import java.security.SecureRandom
 import kotlinx.coroutines.withTimeout
 
 class GoogleAuthClient(
@@ -18,38 +19,46 @@ class GoogleAuthClient(
     private val repository: AuthRepository
 ) {
     private val credentialManager = CredentialManager.create(context)
+    private val secureRandom = SecureRandom()
 
     suspend fun signIn(): Result<SessionData> = runCatching {
-        val serverClientId = context.getString(R.string.google_web_client_id).trim()
-        require(serverClientId.isNotBlank() && !serverClientId.startsWith("REPLACE_")) {
-            "تسجيل الدخول باستخدام Google غير مهيأ بعد"
-        }
+        withTimeout(30_000L) {
+            val serverClientId = context.getString(R.string.google_web_client_id).trim()
+            require(serverClientId.isNotBlank() && !serverClientId.startsWith("REPLACE_")) {
+                "تسجيل الدخول باستخدام Google غير مهيأ بعد"
+            }
 
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setServerClientId(serverClientId)
-            .setFilterByAuthorizedAccounts(false)
-            .setAutoSelectEnabled(false)
-            .build()
+            val activityContext = context as? Activity
+                ?: error("تعذر فتح نافذة Google من سياق التطبيق الحالي")
 
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
+            val nonceBytes = ByteArray(32).also(secureRandom::nextBytes)
+            val nonce = Base64.encodeToString(
+                nonceBytes,
+                Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
+            )
 
-        val activityContext = context as? Activity
-            ?: error("تعذر فتح نافذة Google من سياق التطبيق الحالي")
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setServerClientId(serverClientId)
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
+                .setNonce(nonce)
+                .build()
 
-        val result = withTimeout(30_000L) {
-            credentialManager.getCredential(
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            val result = credentialManager.getCredential(
                 context = activityContext,
                 request = request
             )
-        }
 
-        val credential = result.credential
+            val credential = result.credential
+            require(
+                credential is CustomCredential &&
+                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            ) { "لم يتم اختيار حساب Google صالح" }
 
-        if (credential is CustomCredential &&
-            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-        ) {
             val googleCredential = try {
                 GoogleIdTokenCredential.createFrom(credential.data)
             } catch (_: GoogleIdTokenParsingException) {
@@ -59,8 +68,6 @@ class GoogleAuthClient(
             val idToken = googleCredential.idToken
             require(idToken.isNotBlank()) { "تعذر الحصول على Google ID Token" }
             repository.signInWithGoogle(idToken).getOrThrow()
-        } else {
-            error("لم يتم اختيار حساب Google صالح")
         }
     }
 
