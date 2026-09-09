@@ -10,6 +10,7 @@ import com.google.android.gms.common.api.CommonStatusCodes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class GoogleSignInActivity : Activity() {
@@ -74,7 +75,7 @@ class GoogleSignInActivity : Activity() {
     }
 
     override fun onDestroy() {
-        signInScope.coroutineContext.cancel()
+        signInScope.cancel()
         super.onDestroy()
     }
 
