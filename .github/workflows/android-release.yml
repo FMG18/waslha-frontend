@@ -50,6 +50,25 @@ jobs:
             printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"google_web_client_id\" translatable=\"false\">${GOOGLE_WEB_CLIENT_ID}</string>" '</resources>' > app/src/main/res/values/google_auth.xml
           fi
 
+      - name: Require stable release signing
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_BASE64: ${{ secrets.WASLHA_KEYSTORE_BASE64 }}
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
+        run: |
+          test -n "$WASLHA_KEYSTORE_BASE64" || { echo "Missing WASLHA_KEYSTORE_BASE64 GitHub secret"; exit 1; }
+          test -n "$WASLHA_KEYSTORE_PASSWORD" || { echo "Missing WASLHA_KEYSTORE_PASSWORD GitHub secret"; exit 1; }
+          test -n "$WASLHA_KEY_ALIAS" || { echo "Missing WASLHA_KEY_ALIAS GitHub secret"; exit 1; }
+          test -n "$WASLHA_KEY_PASSWORD" || { echo "Missing WASLHA_KEY_PASSWORD GitHub secret"; exit 1; }
+          printf '%s' "$WASLHA_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/waslha-release.jks"
+          test -s "$RUNNER_TEMP/waslha-release.jks" || { echo "Release keystore is empty"; exit 1; }
+          echo "WASLHA_KEYSTORE_FILE=$RUNNER_TEMP/waslha-release.jks" >> "$GITHUB_ENV"
+          echo "WASLHA_KEYSTORE_PASSWORD=$WASLHA_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "WASLHA_KEY_ALIAS=$WASLHA_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "WASLHA_KEY_PASSWORD=$WASLHA_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Resolve release version
         shell: bash
         env:
@@ -87,15 +106,20 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build one universal release APK
-        run: gradle assembleRelease --stacktrace
+      - name: Build one signed universal release APK
+        run: |
+          gradle assembleRelease --stacktrace \
+            -PWASLHA_KEYSTORE_FILE="$WASLHA_KEYSTORE_FILE" \
+            -PWASLHA_KEYSTORE_PASSWORD="$WASLHA_KEYSTORE_PASSWORD" \
+            -PWASLHA_KEY_ALIAS="$WASLHA_KEY_ALIAS" \
+            -PWASLHA_KEY_PASSWORD="$WASLHA_KEY_PASSWORD"
 
       - name: Prepare release assets
         shell: bash
         run: |
           mkdir -p release-assets
           apk="app/build/outputs/apk/release/app-release.apk"
-          test -f "$apk" || { echo "Expected single APK not found: $apk"; find app/build/outputs/apk/release -maxdepth 2 -type f -print; exit 1; }
+          test -f "$apk" || { echo "Expected one signed APK not found"; find app/build/outputs/apk/release -maxdepth 2 -type f -print; exit 1; }
           cp "$apk" release-assets/waslha.apk
           sha256sum release-assets/waslha.apk > release-assets/waslha.apk.sha256
           printf '%s\n' "Version: $VERSION_NAME" "Version code: $VERSION_CODE" > release-assets/release-info.txt
