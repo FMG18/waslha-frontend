@@ -3,10 +3,12 @@ package com.waslha.app
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
+import kotlinx.coroutines.launch
 
 class GoogleSignInActivity : Activity() {
     companion object { private const val REQUEST_CODE = 9018 }
@@ -46,9 +48,11 @@ class GoogleSignInActivity : Activity() {
             }
             ApiProvider.init(this)
             val repository = AuthRepository(ApiProvider.api, SessionStore(this))
-            repository.signInWithGoogle(token)
-                .onSuccess { result -> finishWithResult(Result.success(result)) }
-                .onFailure { finishWithResult(Result.failure(it)) }
+            lifecycleScope.launch {
+                repository.signInWithGoogle(token)
+                    .onSuccess { result -> finishWithResult(Result.success(result)) }
+                    .onFailure { finishWithResult(Result.failure(it)) }
+            }
         } catch (e: ApiException) {
             val message = when (e.statusCode) {
                 CommonStatusCodes.CANCELED -> "تم إلغاء تسجيل الدخول باستخدام Google"
