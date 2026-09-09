@@ -45,7 +45,10 @@ jobs:
         shell: bash
         run: |
           echo "=== DEBUG SIGNING FINGERPRINTS ==="
-          gradle signingReport --no-daemon | grep -E 'Variant: debug|Store:|SHA1:|SHA-256:' || true
+          DEBUG_KEYSTORE="$HOME/.config/.android/debug.keystore"
+          test -f "$DEBUG_KEYSTORE" || { echo "Debug keystore not found: $DEBUG_KEYSTORE"; exit 1; }
+          keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey \
+            | grep -E 'Alias name:|SHA1:|SHA-1:|SHA256:|SHA-256:'
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
       - name: Upload APK
