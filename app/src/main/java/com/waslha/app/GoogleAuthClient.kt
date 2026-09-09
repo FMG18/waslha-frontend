@@ -1,12 +1,17 @@
 package com.waslha.app
 
+import android.app.Activity
 import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import kotlinx.coroutines.withTimeout
 
 class GoogleAuthClient(
     private val context: Context,
@@ -30,7 +35,16 @@ class GoogleAuthClient(
             .addCredentialOption(googleIdOption)
             .build()
 
-        val result = credentialManager.getCredential(context, request)
+        val activityContext = context as? Activity
+            ?: error("تعذر فتح نافذة Google من سياق التطبيق الحالي")
+
+        val result = withTimeout(30_000L) {
+            credentialManager.getCredential(
+                context = activityContext,
+                request = request
+            )
+        }
+
         val credential = result.credential
 
         if (credential is CustomCredential &&
@@ -46,7 +60,14 @@ class GoogleAuthClient(
             require(idToken.isNotBlank()) { "تعذر الحصول على Google ID Token" }
             repository.signInWithGoogle(idToken).getOrThrow()
         } else {
-            error("بيانات اعتماد Google غير مدعومة")
+            error("لم يتم اختيار حساب Google صالح")
         }
+    }
+
+    fun userMessage(error: Throwable): String = when (error) {
+        is NoCredentialException -> "لم يتم العثور على حساب Google متاح. تأكد من إضافة حساب Google إلى الهاتف."
+        is GetCredentialCancellationException -> "تم إلغاء تسجيل الدخول باستخدام Google"
+        else -> error.message?.takeIf { it.isNotBlank() }
+            ?: "تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى."
     }
 }
