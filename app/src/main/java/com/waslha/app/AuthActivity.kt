@@ -1,5 +1,6 @@
 package com.waslha.app
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -82,8 +83,8 @@ class AuthActivity : ComponentActivity() {
 
 @Composable
 private fun WaslhaAuthScreen(repository: AuthRepository, onAuthenticated: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val googleAuthClient = remember(context, repository) { GoogleAuthClient(context, repository) }
+    val activity = androidx.compose.ui.platform.LocalContext.current as Activity
+    val googleAuthClient = remember(activity, repository) { GoogleAuthClient(activity, repository) }
     val scope = rememberCoroutineScope()
 
     var phone by remember { mutableStateOf("") }
