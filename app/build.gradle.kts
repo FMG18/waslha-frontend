@@ -31,6 +31,24 @@ android {
     dependenciesInfo {
         includeInApk = false
     }
+
+    val releaseKeystore = providers.gradleProperty("WASLHA_KEYSTORE_FILE").orNull
+    val releaseStorePassword = providers.gradleProperty("WASLHA_KEYSTORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.gradleProperty("WASLHA_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.gradleProperty("WASLHA_KEY_PASSWORD").orNull
+
+    if (!releaseKeystore.isNullOrBlank() && !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() && !releaseKeyPassword.isNullOrBlank()) {
+        signingConfigs {
+            create("waslhaRelease") {
+                storeFile = file(releaseKeystore)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("waslhaRelease")
+    }
 }
 
 dependencies {
