@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +43,11 @@ class LaunchActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 delay(950)
-                startActivity(Intent(this@LaunchActivity, UpdateGateActivity::class.java))
+                val sessionStore = SessionStore(this@LaunchActivity)
+                val target = if (sessionStore.isSignedIn) MainActivity::class.java else AuthActivity::class.java
+                startActivity(Intent(this@LaunchActivity, target).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                })
                 finish()
             }
 
@@ -95,7 +100,7 @@ class LaunchActivity : ComponentActivity() {
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 private fun rememberLaunchVisibility(): androidx.compose.runtime.MutableState<Boolean> {
     val state = androidx.compose.runtime.remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { state.value = true }
