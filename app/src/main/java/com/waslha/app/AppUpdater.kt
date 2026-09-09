@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,49 +23,42 @@ class AppUpdater(private val context: Context) {
 
     suspend fun check(): Result<AppUpdateDto?> = withContext(Dispatchers.IO) {
         runCatching {
-            ApiProvider.api.latestUpdate(
-                BuildConfig.VERSION_CODE,
-                Build.SUPPORTED_ABIS.firstOrNull() ?: "universal"
-            ).let { response ->
-                require(response.success) { response.message ?: "تعذر فحص التحديث" }
-                response.data?.takeIf { it.updateAvailable && it.apk != null }
-            }
+            ApiProvider.api.latestUpdate(BuildConfig.VERSION_CODE, "universal")
+                .let { response ->
+                    require(response.success) { response.message ?: "تعذر فحص التحديث" }
+                    response.data?.takeIf { it.updateAvailable && it.apk != null }
+                }
         }
     }
 
     fun downloadUpdate(update: AppUpdateDto): Long {
         val apk = requireNotNull(update.apk)
-        val directory = File(appContext.externalCacheDir ?: appContext.cacheDir, "updates").apply { mkdirs() }
-        val file = File(directory, apk.name)
         val oldId = prefs.getLong("download_id", -1L)
+        val storedVersion = prefs.getString("version", null)
 
-        if (oldId > 0L) {
-            val query = DownloadManager.Query().setFilterById(oldId)
-            downloadManager.query(query).use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    val storedVersion = prefs.getString("version", null)
-                    if (storedVersion == update.versionName &&
-                        (status == DownloadManager.STATUS_PENDING ||
-                         status == DownloadManager.STATUS_RUNNING ||
-                         status == DownloadManager.STATUS_PAUSED)
-                    ) return oldId
-                }
-            }
+        if (oldId > 0L && storedVersion == update.versionName) {
+            val status = downloadStatus(oldId)
+            if (status == DownloadManager.STATUS_PENDING ||
+                status == DownloadManager.STATUS_RUNNING ||
+                status == DownloadManager.STATUS_PAUSED ||
+                status == DownloadManager.STATUS_SUCCESSFUL
+            ) return oldId
         }
 
-        if (file.exists()) file.delete()
         val request = DownloadManager.Request(Uri.parse(apk.url))
             .setTitle("وصلها ${update.versionName}")
-            .setDescription("جاري تنزيل تحديث وصلها")
+            .setDescription("تحديث التطبيق")
             .setMimeType("application/vnd.android.package-archive")
-            .setDestinationUri(Uri.fromFile(file))
+            .setDestinationInExternalFilesDir(appContext, Environment.DIRECTORY_DOWNLOADS, "Waslha/updates/${apk.name}")
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(false)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
         val id = downloadManager.enqueue(request)
-        prefs.edit().putLong("download_id", id).putString("version", update.versionName).apply()
+        prefs.edit()
+            .putLong("download_id", id)
+            .putString("version", update.versionName)
+            .apply()
         return id
     }
 
@@ -88,15 +83,17 @@ class AppUpdater(private val context: Context) {
         val query = DownloadManager.Query().setFilterById(downloadId)
         downloadManager.query(query).use { cursor ->
             if (!cursor.moveToFirst()) return null
-            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            if (status != DownloadManager.STATUS_SUCCESSFUL) return null
+            if (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) != DownloadManager.STATUS_SUCCESSFUL) return null
             val uri = Uri.parse(cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)))
-            return if (uri.scheme == "file") uri.path?.let(::File) else null
+            return when (uri.scheme) {
+                "file" -> uri.path?.let(::File)
+                else -> null
+            }
         }
     }
 
     fun verifySha256(file: File, expected: String?): Boolean {
-        if (expected.isNullOrBlank()) return true
+        if (expected.isNullOrBlank()) return false
         val digest = MessageDigest.getInstance("SHA-256")
         FileInputStream(file).use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -110,7 +107,23 @@ class AppUpdater(private val context: Context) {
         return actual.equals(expected.trim(), ignoreCase = true)
     }
 
+    fun canInstallPackages(): Boolean = Build.VERSION.SDK_INT < 26 || appContext.packageManager.canRequestPackageInstalls()
+
+    fun openInstallPermissionSettings() {
+        if (Build.VERSION.SDK_INT >= 26) {
+            appContext.startActivity(
+                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${appContext.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+
     fun install(file: File) {
+        require(file.exists()) { "ملف التحديث غير موجود" }
+        if (!canInstallPackages()) {
+            openInstallPermissionSettings()
+            return
+        }
         val uri = FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
@@ -118,11 +131,11 @@ class AppUpdater(private val context: Context) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         appContext.startActivity(intent)
-        prefs.edit().remove("download_id").remove("version").apply()
     }
 
     fun cleanup(file: File?) {
         file?.takeIf { it.exists() }?.delete()
+        prefs.edit().remove("download_id").remove("version").apply()
     }
 
     fun registerDownloadReceiver(onCompleted: (Long) -> Unit): BroadcastReceiver {
