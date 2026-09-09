@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +39,21 @@ class LaunchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var visible by rememberLaunchVisibility()
+            var visible by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
+                visible = true
                 delay(950)
-                startActivity(Intent(this@LaunchActivity, UpdateGateActivity::class.java))
+                // Bypass the update gate temporarily so updater problems cannot
+                // prevent the app from opening. The updater can be restored safely later.
+                val target = if (SessionStore(this@LaunchActivity).isSignedIn) {
+                    MainActivity::class.java
+                } else {
+                    AuthActivity::class.java
+                }
+                startActivity(Intent(this@LaunchActivity, target).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                })
                 finish()
             }
 
@@ -93,11 +104,4 @@ class LaunchActivity : ComponentActivity() {
             }
         }
     }
-}
-
-@androidx.compose.runtime.Composable
-private fun rememberLaunchVisibility(): androidx.compose.runtime.MutableState<Boolean> {
-    val state = androidx.compose.runtime.remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { state.value = true }
-    return state
 }
