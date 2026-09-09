@@ -18,6 +18,9 @@ on:
 permissions:
   contents: write
 
+env:
+  GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID || '402670996635-cojr4khl41le3ermkojkojdkv03arpd6.apps.googleusercontent.com' }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,13 +45,10 @@ jobs:
 
       - name: Prepare Google web client ID resource
         shell: bash
-        env:
-          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: |
+          test -n "$GOOGLE_WEB_CLIENT_ID" || { echo "GOOGLE_WEB_CLIENT_ID is empty"; exit 1; }
           mkdir -p app/src/main/res/values
-          if [ -n "$GOOGLE_WEB_CLIENT_ID" ]; then
-            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"google_web_client_id\" translatable=\"false\">${GOOGLE_WEB_CLIENT_ID}</string>" '</resources>' > app/src/main/res/values/google_auth.xml
-          fi
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"google_web_client_id\" translatable=\"false\">${GOOGLE_WEB_CLIENT_ID}</string>" '</resources>' > app/src/main/res/values/google_auth.xml
 
       - name: Require stable release signing
         shell: bash
@@ -58,6 +58,7 @@ jobs:
           WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
           WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
           test -n "$WASLHA_KEYSTORE_BASE64" || { echo "Missing WASLHA_KEYSTORE_BASE64 GitHub secret"; exit 1; }
           test -n "$WASLHA_KEYSTORE_PASSWORD" || { echo "Missing WASLHA_KEYSTORE_PASSWORD GitHub secret"; exit 1; }
           test -n "$WASLHA_KEY_ALIAS" || { echo "Missing WASLHA_KEY_ALIAS GitHub secret"; exit 1; }
@@ -68,16 +69,6 @@ jobs:
           echo "WASLHA_KEYSTORE_PASSWORD=$WASLHA_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "WASLHA_KEY_ALIAS=$WASLHA_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "WASLHA_KEY_PASSWORD=$WASLHA_KEY_PASSWORD" >> "$GITHUB_ENV"
-
-      - name: Print release signing fingerprints
-        shell: bash
-        env:
-          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
-          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
-        run: |
-          echo "=== RELEASE SIGNING FINGERPRINTS ==="
-          keytool -list -v -keystore "$WASLHA_KEYSTORE_FILE" -storepass "$WASLHA_KEYSTORE_PASSWORD" -alias "$WASLHA_KEY_ALIAS" \
-            | grep -E 'Alias name:|SHA1:|SHA256:' || true
 
       - name: Resolve release version
         shell: bash
@@ -123,6 +114,16 @@ jobs:
             -PWASLHA_KEYSTORE_PASSWORD="$WASLHA_KEYSTORE_PASSWORD" \
             -PWASLHA_KEY_ALIAS="$WASLHA_KEY_ALIAS" \
             -PWASLHA_KEY_PASSWORD="$WASLHA_KEY_PASSWORD"
+
+      - name: Print release APK signing fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK" || { echo "Release APK not found"; find app/build/outputs/apk/release -maxdepth 2 -type f -print; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner -print | sort -V | tail -n 1)
+          test -n "$APKSIGNER" || { echo "apksigner not found"; exit 1; }
+          "$APKSIGNER" verify --print-certs "$APK"
 
       - name: Prepare release assets
         shell: bash
