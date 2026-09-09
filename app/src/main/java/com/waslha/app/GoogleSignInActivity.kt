@@ -3,15 +3,18 @@ package com.waslha.app
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class GoogleSignInActivity : Activity() {
     companion object { private const val REQUEST_CODE = 9018 }
+    private val signInScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +51,7 @@ class GoogleSignInActivity : Activity() {
             }
             ApiProvider.init(this)
             val repository = AuthRepository(ApiProvider.api, SessionStore(this))
-            lifecycleScope.launch {
+            signInScope.launch {
                 try {
                     repository.signInWithGoogle(token)
                         .onSuccess { result -> finishWithResult(Result.success(result)) }
@@ -68,6 +71,11 @@ class GoogleSignInActivity : Activity() {
         } catch (t: Throwable) {
             finishWithError(t.message ?: "تعذر تسجيل الدخول باستخدام Google")
         }
+    }
+
+    override fun onDestroy() {
+        signInScope.coroutineContext.cancel()
+        super.onDestroy()
     }
 
     private fun finishWithError(message: String) =
