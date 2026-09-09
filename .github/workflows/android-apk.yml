@@ -41,6 +41,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Print debug signing fingerprints
+        shell: bash
+        run: |
+          echo "=== DEBUG SIGNING FINGERPRINTS ==="
+          gradle signingReport --no-daemon | grep -E 'Variant: debug|Store:|SHA1:|SHA-256:' || true
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
       - name: Upload APK
