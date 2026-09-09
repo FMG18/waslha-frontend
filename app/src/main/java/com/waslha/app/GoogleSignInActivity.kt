@@ -49,9 +49,13 @@ class GoogleSignInActivity : Activity() {
             ApiProvider.init(this)
             val repository = AuthRepository(ApiProvider.api, SessionStore(this))
             lifecycleScope.launch {
-                repository.signInWithGoogle(token)
-                    .onSuccess { result -> finishWithResult(Result.success(result)) }
-                    .onFailure { finishWithResult(Result.failure(it)) }
+                try {
+                    repository.signInWithGoogle(token)
+                        .onSuccess { result -> finishWithResult(Result.success(result)) }
+                        .onFailure { finishWithResult(Result.failure(it)) }
+                } catch (t: Throwable) {
+                    finishWithError(t.message ?: "تعذر إكمال تسجيل الدخول باستخدام Google")
+                }
             }
         } catch (e: ApiException) {
             val message = when (e.statusCode) {
