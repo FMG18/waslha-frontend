@@ -74,10 +74,7 @@ private fun TaxiHome(sessionStore: SessionStore) {
                             fontSize = 13.sp
                         )
                     }
-                    IconButton(onClick = {
-                        sessionStore.clear()
-                        finishActivity()
-                    }) {
+                    IconButton(onClick = { sessionStore.clear() }) {
                         Icon(Icons.Default.Logout, contentDescription = "تسجيل الخروج", tint = Ink)
                     }
                 }
@@ -140,8 +137,4 @@ private fun TaxiHome(sessionStore: SessionStore) {
             }
         }
     }
-}
-
-@Composable
-private fun finishActivity() {
 }
