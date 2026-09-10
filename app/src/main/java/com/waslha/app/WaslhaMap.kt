@@ -57,6 +57,10 @@ fun WaslhaRideMap(
     val accessToken = remember {
         context.resources.getString(R.string.mapbox_access_token).trim()
     }
+    if (accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) {
+        MapboxOptions.accessToken = accessToken
+    }
+
     var routeResult by remember(destination, pickup) { mutableStateOf<RouteResult?>(null) }
     var routeLoading by remember(destination, pickup) { mutableStateOf(false) }
     var routeError by remember(destination, pickup) { mutableStateOf<String?>(null) }
@@ -67,12 +71,6 @@ fun WaslhaRideMap(
             zoom(13.5)
             pitch(0.0)
             bearing(0.0)
-        }
-    }
-
-    LaunchedEffect(accessToken) {
-        if (accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) {
-            MapboxOptions.accessToken = accessToken
         }
     }
 
