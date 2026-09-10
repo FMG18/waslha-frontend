@@ -19,8 +19,10 @@ class TripRepository(private val api: WaslhaApi) {
         response.data
     }
 
-    suspend fun estimate(pickup: Coordinates): Result<FareEstimate> = runCatching {
-        val payload = "{\"lat\":${pickup.lat},\"lng\":${pickup.lng}}"
+    suspend fun estimate(pickup: Coordinates, destination: Coordinates): Result<FareEstimate> = runCatching {
+        val payload = """
+            {"lat":${pickup.lat},"lng":${pickup.lng},"destination":{"lat":${destination.lat},"lng":${destination.lng}}}
+        """.trimIndent()
         val response = api.estimate(payload)
         require(response.success && response.data != null) { response.message ?: "تعذر حساب الأجرة" }
         response.data
