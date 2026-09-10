@@ -43,7 +43,7 @@ class LaunchActivity : ComponentActivity() {
                 visible = true
                 delay(950)
                 val sessionStore = SessionStore(this@LaunchActivity)
-                val target = if (sessionStore.isSignedIn) SafeTaxiActivity::class.java else AuthActivity::class.java
+                val target = if (sessionStore.isSignedIn) WaslhaCustomerActivity::class.java else AuthActivity::class.java
                 startActivity(Intent(this@LaunchActivity, target).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 })
