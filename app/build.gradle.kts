@@ -12,8 +12,8 @@ android {
         applicationId = "com.waslha.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 137
-        versionName = "1.3.7"
+        versionCode = 140
+        versionName = "1.4.0"
     }
 
     compileOptions {
@@ -63,6 +63,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.credentials:credentials:1.3.0")
