@@ -1,1 +1,1 @@
-// STOP
+// abort
