@@ -26,6 +26,14 @@ class SessionStore(context: Context) {
             .apply()
     }
 
+    fun updateProfile(name: String?, phone: String?, email: String?) {
+        prefs.edit()
+            .putString("name", name)
+            .putString("phone", phone)
+            .putString("email", email)
+            .apply()
+    }
+
     fun clear() {
         prefs.edit().clear().apply()
         appContext.startActivity(
