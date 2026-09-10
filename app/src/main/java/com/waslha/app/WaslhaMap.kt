@@ -32,14 +32,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
-import com.mapbox.maps.EdgeInsets
-import com.mapbox.maps.extension.compose.MapEffect
+import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
-import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
-import com.mapbox.maps.CameraOptions
 
 private fun calculateEstimatedFare(distanceKm: Double, durationMin: Int): Int {
     val base = 2500.0
@@ -55,8 +53,10 @@ fun WaslhaRideMap(
     modifier: Modifier = Modifier,
     onDestinationPicked: (Coordinates) -> Unit = {}
 ) {
-    val accessToken = androidx.compose.ui.platform.LocalContext.current
-        .resources.getString(R.string.mapbox_access_token)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val accessToken = remember {
+        context.resources.getString(R.string.mapbox_access_token).trim()
+    }
     var routeResult by remember(destination, pickup) { mutableStateOf<RouteResult?>(null) }
     var routeLoading by remember(destination, pickup) { mutableStateOf(false) }
     var routeError by remember(destination, pickup) { mutableStateOf<String?>(null) }
@@ -70,10 +70,16 @@ fun WaslhaRideMap(
         }
     }
 
+    LaunchedEffect(accessToken) {
+        if (accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) {
+            MapboxOptions.accessToken = accessToken
+        }
+    }
+
     LaunchedEffect(pickup, destination, accessToken) {
         routeResult = null
         routeError = null
-        if (destination != null) {
+        if (destination != null && accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) {
             routeLoading = true
             fetchMapboxRoute(pickup, destination, accessToken)
                 .onSuccess { routeResult = it }
@@ -82,87 +88,79 @@ fun WaslhaRideMap(
         }
     }
 
-    MapEffect(routeResult?.points) { mapView ->
-        val points = routeResult?.points.orEmpty().map { Point.fromLngLat(it.lng, it.lat) }
-        if (points.size >= 2) {
-            mapView.mapboxMap.cameraForCoordinates(
-                coordinates = points,
-                camera = CameraOptions.Builder().pitch(0.0).bearing(0.0).build(),
-                coordinatesPadding = EdgeInsets(180.0, 48.0, 260.0, 48.0),
-                maxZoom = 15.5,
-                offset = null
-            ) { cameraPosition ->
-                viewport.setCameraOptions(cameraPosition)
-            }
-        }
-    }
-
     Box(modifier.background(Color(0xFFE7EFEB))) {
-        MapboxMap(
-            modifier = Modifier.fillMaxSize(),
-            mapViewportState = viewport,
-            style = { MapboxStandardStyle() },
-            onMapClickListener = {
-                val center = viewport.cameraState?.center
-                if (center != null) {
-                    onDestinationPicked(Coordinates(center.latitude(), center.longitude()))
+        if (accessToken.isBlank() || accessToken.startsWith("YOUR_")) {
+            Card(
+                modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                colors = CardDefaults.cardColors(Color.White),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Place, null, tint = Color(0xFFB42318), modifier = Modifier.size(38.dp))
+                    Text("الخريطة غير مهيأة", fontWeight = FontWeight.Black, color = Color(0xFF10201B))
+                    Text("سيتم تفعيل الخريطة بعد إعداد مفتاح Mapbox.", fontSize = 11.sp, color = Color(0xFF72807B))
                 }
-                true
             }
-        ) {
-            routeResult?.let { result ->
-                if (result.points.size >= 2) {
-                    PolylineAnnotation(
-                        points = result.points.map { Point.fromLngLat(it.lng, it.lat) }
-                    ) {
-                        lineColor = Color(0xFF078A60)
-                        lineWidth = 5.0
-                        lineOpacity = 0.95
+        } else {
+            MapboxMap(
+                modifier = Modifier.fillMaxSize(),
+                mapViewportState = viewport,
+                onMapClickListener = {
+                    val center = viewport.cameraState?.center
+                    if (center != null) {
+                        onDestinationPicked(Coordinates(center.latitude(), center.longitude()))
+                    }
+                    true
+                }
+            ) {
+                routeResult?.let { result ->
+                    if (result.points.size >= 2) {
+                        PolylineAnnotation(
+                            points = result.points.map { Point.fromLngLat(it.lng, it.lat) }
+                        ) {
+                            lineColor = Color(0xFF078A60)
+                            lineWidth = 5.0
+                            lineOpacity = 0.95
+                        }
                     }
                 }
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(bottom = 12.dp)
-                .shadow(6.dp, CircleShape)
-                .background(Color.White, CircleShape)
-                .size(46.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Place, null, tint = Color(0xFFD93838), modifier = Modifier.size(34.dp))
-        }
-
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 14.dp, start = 18.dp, end = 18.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
-            shape = RoundedCornerShape(18.dp),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(bottom = 12.dp)
+                    .shadow(6.dp, CircleShape)
+                    .background(Color.White, CircleShape)
+                    .size(46.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (destination == null) "حدد وجهتك على الخريطة" else "تم تحديد الوجهة",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF10201B)
-                    )
-                    Text(
-                        "اضغط على المكان المطلوب لتثبيت الوجهة",
-                        fontSize = 9.sp,
-                        color = Color(0xFF72807B)
-                    )
-                }
-                IconButton(
-                    onClick = {
+                Icon(Icons.Default.Place, null, tint = Color(0xFFD93838), modifier = Modifier.size(34.dp))
+            }
+
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 14.dp, start = 18.dp, end = 18.dp)
+                    .fillMaxWidth(),
+                colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
+                shape = RoundedCornerShape(18.dp),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (destination == null) "حدد وجهتك على الخريطة" else "تم تحديد الوجهة",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF10201B)
+                        )
+                        Text("حرّك الخريطة واجعل المؤشر فوق وجهتك", fontSize = 9.sp, color = Color(0xFF72807B))
+                    }
+                    IconButton(onClick = {
                         viewport.flyTo(
                             CameraOptions.Builder()
                                 .center(Point.fromLngLat(pickup.lng, pickup.lat))
@@ -171,67 +169,57 @@ fun WaslhaRideMap(
                                 .bearing(0.0)
                                 .build()
                         )
+                    }) {
+                        Icon(Icons.Default.MyLocation, "موقعي الحالي", tint = Color(0xFF078A60))
                     }
-                ) {
-                    Icon(Icons.Default.MyLocation, "موقعي الحالي", tint = Color(0xFF078A60))
                 }
             }
-        }
 
-        routeResult?.let { result ->
-            val estimatedFare = calculateEstimatedFare(result.distanceKm, result.durationMin)
-            Card(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
-                colors = CardDefaults.cardColors(Color.White.copy(alpha = .97f)),
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(6.dp)
-            ) {
-                Column(Modifier.padding(horizontal = 18.dp, vertical = 13.dp)) {
-                    Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text("المسافة", fontSize = 9.sp, color = Color(0xFF72807B))
-                            Text("${result.distanceKm} كم", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF078A60))
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text("الوقت التقريبي", fontSize = 9.sp, color = Color(0xFF72807B))
-                            Text("${result.durationMin} دقيقة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("الأجرة التقديرية", fontSize = 9.sp, color = Color(0xFF72807B))
-                            Text("$estimatedFare ل.س", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-                        }
-                    }
-                    Text(
-                        "السعر تقديري ويتغير حسب فئة السيارة والطلب الفعلي",
-                        modifier = Modifier.padding(top = 6.dp),
-                        fontSize = 8.sp,
-                        color = Color(0xFF8B9792)
-                    )
-                }
-            }
-        } ?: run {
-            when {
-                routeLoading -> Card(
+            routeResult?.let { result ->
+                val estimatedFare = calculateEstimatedFare(result.distanceKm, result.durationMin)
+                Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
-                    colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(Color.White.copy(alpha = .97f)),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(6.dp)
                 ) {
-                    Row(Modifier.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF078A60))
-                        Text(" نحسب أقرب طريق...", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Column(Modifier.padding(horizontal = 18.dp, vertical = 13.dp)) {
+                        Row(Modifier.fillMaxWidth()) {
+                            Column(Modifier.weight(1f)) {
+                                Text("المسافة", fontSize = 9.sp, color = Color(0xFF72807B))
+                                Text("${result.distanceKm} كم", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF078A60))
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text("الوقت التقريبي", fontSize = 9.sp, color = Color(0xFF72807B))
+                                Text("${result.durationMin} دقيقة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("الأجرة التقديرية", fontSize = 9.sp, color = Color(0xFF72807B))
+                                Text("$estimatedFare ل.س", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
+                            }
+                        }
+                        Text("السعر تقديري ويتغير حسب فئة السيارة والطلب الفعلي", modifier = Modifier.padding(top = 6.dp), fontSize = 8.sp, color = Color(0xFF8B9792))
                     }
                 }
-                routeError != null -> Card(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
-                    colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        "تعذر حساب المسار. جرّب نقطة أخرى.",
-                        modifier = Modifier.padding(11.dp),
-                        fontSize = 10.sp,
-                        color = Color(0xFFB42318)
-                    )
+            } ?: run {
+                when {
+                    routeLoading -> Card(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
+                        colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(Modifier.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF078A60))
+                            Text(" نحسب أقرب طريق...", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    routeError != null -> Card(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp),
+                        colors = CardDefaults.cardColors(Color.White.copy(alpha = .96f)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("تعذر حساب المسار. جرّب نقطة أخرى.", modifier = Modifier.padding(11.dp), fontSize = 10.sp, color = Color(0xFFB42318))
+                    }
                 }
             }
         }
