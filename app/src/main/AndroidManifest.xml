@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
+        android:name=".WaslhaApplication"
         android:allowBackup="true"
         android:icon="@drawable/waslha_brand_logo"
         android:roundIcon="@drawable/waslha_brand_logo"
