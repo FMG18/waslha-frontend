@@ -91,7 +91,7 @@ private fun SettingRow(title: String, subtitle: String, icon: androidx.compose.u
 }
 
 @Composable
-fun ProfileScreen(sessionStore: SessionStore, onSettings: () -> Unit, onLogout: () -> Unit) {
+fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> Unit, onLogout: () -> Unit) {
     Column(Modifier.padding(18.dp)) {
         Text("حسابي", fontSize = 30.sp, fontWeight = FontWeight.Black, color = NavInk)
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
