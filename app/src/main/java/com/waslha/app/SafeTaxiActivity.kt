@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.CreditCard
@@ -45,6 +44,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Security
@@ -237,63 +237,67 @@ private fun TaxiApp(session: SessionStore, onLogout: () -> Unit) {
         }
     }
 
-    when {
-        mapPicker -> MapPickerScreen(pickup ?: Damascus, destination?.coordinates, onBack = { mapPicker = false }) { c ->
-            destination = TaxiDestination("الموقع المحدد", "من الخريطة", c)
-            mapPicker = false
-        }
-        trip != null -> ActiveTrip(trip = trip!!, pickup = pickup, destination = destination,
-            loading = requesting, error = error,
-            onRefresh = {
-                requesting = true
-                scope.launch { repo.get(trip!!.id).onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر التحديث" }; requesting = false }
-            },
-            onCancel = {
-                requesting = true
-                scope.launch { repo.cancel(trip!!.id, "إلغاء من الراكب").onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر الإلغاء" }; requesting = false }
-            },
-            onShare = { shareTrip(context, trip!!) },
-            onDone = { trip = null; tab = 1; error = null }
-        )
-        else -> Scaffold(
-            containerColor = WaslhaBg,
-            bottomBar = {
-                NavigationBar(containerColor = Color.White, tonalElevation = 5.dp, modifier = Modifier.navigationBarsPadding()) {
-                    NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.Default.DirectionsCar, null) }, label = { Text("الرئيسية") })
-                    NavigationBarItem(tab == 1, { tab = 1 }, icon = { Icon(Icons.Default.History, null) }, label = { Text("رحلاتي") })
-                    NavigationBarItem(tab == 2, { tab = 2 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("حسابي") })
+    MaterialTheme {
+        Surface(Modifier.fillMaxSize(), color = WaslhaBg) {
+            when {
+                mapPicker -> MapPickerScreen(pickup ?: Damascus, destination?.coordinates, onBack = { mapPicker = false }) { c ->
+                    destination = TaxiDestination("الموقع المحدد", "من الخريطة", c)
+                    mapPicker = false
                 }
-            }
-        ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
-                when (tab) {
-                    0 -> HomeScreen(session, pickupLabel, destination, selectedVehicle, fare, calculating, locating, requesting, error, favorite,
-                        onRefreshLocation = { if (granted) refreshLocation() else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
-                        onDestination = { destinationDialog = true }, onMap = { mapPicker = true }, onVehicle = { selectedVehicle = it },
-                        onSaveFavorite = { destination?.let { prefs.saveFavorite(it); favorite = it } }, onUseFavorite = { favorite?.let { destination = it } },
-                        onRequest = {
-                            val a = pickup; val b = destination; val user = session.userId
-                            when {
-                                a == null -> error = "حدد موقع الانطلاق أولًا"
-                                b == null -> destinationDialog = true
-                                user.isNullOrBlank() -> error = "بيانات الحساب غير مكتملة"
-                                else -> {
-                                    requesting = true; error = null
-                                    scope.launch {
-                                        repo.create(TripRequest(user, a, b.coordinates, selectedVehicle.id, "cash"))
-                                            .onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر إنشاء الرحلة" }
-                                        requesting = false
+                trip != null -> ActiveTrip(trip = trip!!, pickup = pickup, destination = destination,
+                    loading = requesting, error = error,
+                    onRefresh = {
+                        requesting = true
+                        scope.launch { repo.get(trip!!.id).onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر التحديث" }; requesting = false }
+                    },
+                    onCancel = {
+                        requesting = true
+                        scope.launch { repo.cancel(trip!!.id, "إلغاء من الراكب").onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر الإلغاء" }; requesting = false }
+                    },
+                    onShare = { shareTrip(context, trip!!) },
+                    onDone = { trip = null; tab = 1; error = null }
+                )
+                else -> Scaffold(
+                    containerColor = WaslhaBg,
+                    bottomBar = {
+                        NavigationBar(containerColor = Color.White, tonalElevation = 5.dp, modifier = Modifier.navigationBarsPadding()) {
+                            NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.Default.DirectionsCar, null) }, label = { Text("الرئيسية") })
+                            NavigationBarItem(tab == 1, { tab = 1 }, icon = { Icon(Icons.Default.History, null) }, label = { Text("رحلاتي") })
+                            NavigationBarItem(tab == 2, { tab = 2 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("حسابي") })
+                        }
+                    }
+                ) { padding ->
+                    Box(Modifier.fillMaxSize().padding(padding)) {
+                        when (tab) {
+                            0 -> HomeScreen(session, pickupLabel, destination, selectedVehicle, fare, calculating, locating, requesting, error, favorite,
+                                onRefreshLocation = { if (granted) refreshLocation() else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
+                                onDestination = { destinationDialog = true }, onMap = { mapPicker = true }, onVehicle = { selectedVehicle = it },
+                                onSaveFavorite = { destination?.let { prefs.saveFavorite(it); favorite = it } }, onUseFavorite = { favorite?.let { destination = it } },
+                                onRequest = {
+                                    val a = pickup; val b = destination; val user = session.userId
+                                    when {
+                                        a == null -> error = "حدد موقع الانطلاق أولًا"
+                                        b == null -> destinationDialog = true
+                                        user.isNullOrBlank() -> error = "بيانات الحساب غير مكتملة"
+                                        else -> {
+                                            requesting = true; error = null
+                                            scope.launch {
+                                                repo.create(TripRequest(user, a, b.coordinates, selectedVehicle.id, "cash"))
+                                                    .onSuccess { trip = it }.onFailure { error = it.message ?: "تعذر إنشاء الرحلة" }
+                                                requesting = false
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        }, onSupport = { supportDialog = true })
-                    1 -> TripsScreen(history, loadingHistory, error, onRefresh = {
-                        val user = session.userId ?: return@TripsScreen
-                        loadingHistory = true; scope.launch { repo.list(user).onSuccess { history = it }.onFailure { error = it.message ?: "تعذر جلب الرحلات" }; loadingHistory = false }
-                    }, onDetails = { tripDetails = it }, onShare = { shareTrip(context, it) })
-                    else -> ProfileScreen(session, notifications, offers, favorite,
-                        onNotifications = { notifications = it; prefs.notifications = it }, onOffers = { offers = it; prefs.offers = it },
-                        onClearFavorite = { prefs.clearFavorite(); favorite = null }, onSupport = { supportDialog = true }, onAbout = { aboutDialog = true }, onLogout = onLogout)
+                                }, onSupport = { supportDialog = true })
+                            1 -> TripsScreen(history, loadingHistory, error, onRefresh = {
+                                val user = session.userId ?: return@TripsScreen
+                                loadingHistory = true; scope.launch { repo.list(user).onSuccess { history = it }.onFailure { error = it.message ?: "تعذر جلب الرحلات" }; loadingHistory = false }
+                            }, onDetails = { tripDetails = it }, onShare = { shareTrip(context, it) })
+                            else -> ProfileScreen(session, notifications, offers, favorite,
+                                onNotifications = { notifications = it; prefs.notifications = it }, onOffers = { offers = it; prefs.offers = it },
+                                onClearFavorite = { prefs.clearFavorite(); favorite = null }, onSupport = { supportDialog = true }, onAbout = { aboutDialog = true }, onLogout = onLogout)
+                        }
+                    }
                 }
             }
         }
@@ -330,7 +334,7 @@ private fun HomeScreen(session: SessionStore, pickup: String, destination: TaxiD
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.CreditCard, null, tint = WaslhaGreen); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text("الدفع نقدًا", color = WaslhaInk, fontWeight = FontWeight.Bold); Text(if (calculating) "نحسب الأجرة…" else fare?.let { "${it.estimatedFare} ${it.currency} • ${it.distanceKm} كم • ${it.durationMin} دقيقة" } ?: "اختر الوجهة لحساب الأجرة"), color = WaslhaMuted, fontSize = 11.sp) } }
                     }
                     error?.let { Text(it, color = WaslhaDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                    Button(onClick = onRequest, enabled = !requesting, Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = WaslhaPurple)) { if (requesting) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("طلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp) }
+                    Button(onClick = onRequest, enabled = !requesting, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = WaslhaPurple)) { if (requesting) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("طلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp) }
                 }
             }
         }
@@ -361,19 +365,19 @@ private val WalshaSoftCompat = WaslhaSoft
         item { ActionRow("الأمان والخصوصية", "إعدادات الحساب والحماية", Icons.Default.Security) {} }
         item { ActionRow("المساعدة والدعم", "الأسئلة والمشاكل الشائعة", Icons.Default.HelpOutline, onSupport) }
         item { ActionRow("عن وصلها", "معلومات التطبيق", Icons.Default.Info, onAbout) }
-        item { OutlinedButton(onClick = onLogout, Modifier.fillMaxWidth(), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = WaslhaDanger)) { Icon(Icons.Default.Logout, null, tint = WaslhaDanger); Spacer(Modifier.width(7.dp)); Text("تسجيل الخروج", color = WaslhaDanger, fontWeight = FontWeight.Bold) } }
+        item { OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = WaslhaDanger)) { Icon(Icons.Default.Logout, null, tint = WaslhaDanger); Spacer(Modifier.width(7.dp)); Text("تسجيل الخروج", color = WaslhaDanger, fontWeight = FontWeight.Bold) } }
     }
 }
 
 @Composable private fun Section(text: String) { Text(text, color = WaslhaMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 4.dp)) }
 @Composable private fun ToggleRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onChanged: (Boolean) -> Unit) { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(18.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = WaslhaGreen, modifier = Modifier.size(25.dp)); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(title, color = WaslhaInk, fontWeight = FontWeight.Bold); Text(subtitle, color = WaslhaMuted, fontSize = 10.sp) }; Switch(checked, onCheckedChange = onChanged) } } }
-@Composable private fun ActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) { Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(18.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = WaslhaGreen, modifier = Modifier.size(24.dp)); Spacer(Modifier.width(11.dp)); Column(Modifier.weight(1f)) { Text(title, color = WaslhaInk, fontWeight = FontWeight.Bold); Text(subtitle, color = WaslhaMuted, fontSize = 10.sp) }; Icon(Icons.Default.ChevronLeft, null, tint = WaslhaMuted) } } }
+@Composable private fun ActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit = {}) { Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(18.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = WaslhaGreen, modifier = Modifier.size(24.dp)); Spacer(Modifier.width(11.dp)); Column(Modifier.weight(1f)) { Text(title, color = WaslhaInk, fontWeight = FontWeight.Bold); Text(subtitle, color = WaslhaMuted, fontSize = 10.sp) }; Icon(Icons.Default.ChevronLeft, null, tint = WaslhaMuted) } } }
 
 @Composable private fun DestinationDialog(favorite: TaxiDestination?, onDismiss: () -> Unit, onMap: () -> Unit, onSelect: (TaxiDestination) -> Unit) { AlertDialog(onDismissRequest = onDismiss, title = { Text("اختيار الوجهة", fontWeight = FontWeight.Black) }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorite?.let { ActionRow("المحفوظة", it.title, Icons.Default.Favorite) { onSelect(it) } }; TaxiDestinations.forEach { ActionRow(it.title, it.subtitle, Icons.Default.LocationOn) { onSelect(it) } }; ActionRow("اختيار من الخريطة", "حدد موقعًا دقيقًا", Icons.Default.MyLocation, onMap) } }, confirmButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = WaslhaGreen) } }) }
 
 @Composable private fun MapPickerScreen(pickup: Coordinates, destination: Coordinates?, onBack: () -> Unit, onPicked: (Coordinates) -> Unit) { Box(Modifier.fillMaxSize().background(Color.White)) { WaslhaRideMap(pickup = pickup, destination = destination, modifier = Modifier.fillMaxSize(), onDestinationPicked = onPicked); Card(Modifier.align(Alignment.TopCenter).padding(top = 14.dp, start = 16.dp, end = 16.dp), colors = CardDefaults.cardColors(Color.White.copy(alpha = .97f)), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(4.dp)) { Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = WaslhaInk) }; Text("حرّك الخريطة وحدد وجهتك", color = WaslhaInk, fontWeight = FontWeight.Black, fontSize = 12.sp) } } } }
 
-@Composable private fun ActiveTrip(trip: Trip, pickup: Coordinates?, destination: TaxiDestination?, loading: Boolean, error: String?, onRefresh: () -> Unit, onCancel: () -> Unit, onShare: () -> Unit, onDone: () -> Unit) { val terminal = trip.status == "completed" || trip.status == "cancelled"; LazyColumn(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 22.dp)) { item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onDone) { Icon(Icons.Default.ArrowBack, "رجوع") }; Spacer(Modifier.weight(1f)); Text("الرحلة الحالية", color = WaslhaInk, fontSize = 24.sp, fontWeight = FontWeight.Black) } }; if (pickup != null && destination != null) item { Card(Modifier.fillMaxWidth().height(230.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(3.dp)) { WaslhaRideMap(pickup, destination.coordinates, Modifier.fillMaxSize()) { } } }; item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), elevation = CardDefaults.cardElevation(2.dp)) { Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column(Modifier.weight(1f)) { Text(trip.status, color = if (trip.status == "cancelled") WaslhaDanger else WaslhaGreen, fontSize = 20.sp, fontWeight = FontWeight.Black); Text("${trip.distanceKm} كم • ${trip.durationMin} دقيقة", color = WaslhaMuted, fontSize = 11.sp) }; Text("${trip.estimatedFare} ${trip.currency}", color = WaslhaInk, fontSize = 18.sp, fontWeight = FontWeight.Black) }; Info("نوع السيارة", trip.vehicleType); Info("الدفع", trip.paymentMethod); error?.let { Text(it, color = WaslhaDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold) }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = onRefresh, enabled = !loading, Modifier.weight(1f), shape = RoundedCornerShape(15.dp)) { if (loading) CircularProgressIndicator(Modifier.size(17.dp), color = WaslhaGreen, strokeWidth = 2.dp) else Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(4.dp)); Text("تحديث") }; OutlinedButton(onClick = onShare, Modifier.weight(1f), shape = RoundedCornerShape(15.dp)) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(4.dp)); Text("مشاركة") } }; if (!terminal) OutlinedButton(onClick = onCancel, Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = WaslhaDanger)) { Text("إلغاء الرحلة", fontWeight = FontWeight.Bold) } else Button(onClick = onDone, Modifier.fillMaxWidth().height(49.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = WaslhaGreen)) { Text("العودة إلى رحلاتي", fontWeight = FontWeight.Black) } } } } }
+@Composable private fun ActiveTrip(trip: Trip, pickup: Coordinates?, destination: TaxiDestination?, loading: Boolean, error: String?, onRefresh: () -> Unit, onCancel: () -> Unit, onShare: () -> Unit, onDone: () -> Unit) { val terminal = trip.status == "completed" || trip.status == "cancelled"; LazyColumn(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 22.dp)) { item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onDone) { Icon(Icons.Default.ArrowBack, "رجوع") }; Spacer(Modifier.weight(1f)); Text("الرحلة الحالية", color = WaslhaInk, fontSize = 24.sp, fontWeight = FontWeight.Black) } }; if (pickup != null && destination != null) item { Card(Modifier.fillMaxWidth().height(230.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(3.dp)) { WaslhaRideMap(pickup, destination.coordinates, Modifier.fillMaxSize()) { } } }; item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), elevation = CardDefaults.cardElevation(2.dp)) { Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column(Modifier.weight(1f)) { Text(trip.status, color = if (trip.status == "cancelled") WaslhaDanger else WaslhaGreen, fontSize = 20.sp, fontWeight = FontWeight.Black); Text("${trip.distanceKm} كم • ${trip.durationMin} دقيقة", color = WaslhaMuted, fontSize = 11.sp) }; Text("${trip.estimatedFare} ${trip.currency}", color = WaslhaInk, fontSize = 18.sp, fontWeight = FontWeight.Black) }; Info("نوع السيارة", trip.vehicleType); Info("الدفع", trip.paymentMethod); error?.let { Text(it, color = WaslhaDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold) }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = onRefresh, enabled = !loading, modifier = Modifier.weight(1f), shape = RoundedCornerShape(15.dp)) { if (loading) CircularProgressIndicator(Modifier.size(17.dp), color = WaslhaGreen, strokeWidth = 2.dp) else Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(4.dp)); Text("تحديث") }; OutlinedButton(onClick = onShare, modifier = Modifier.weight(1f), shape = RoundedCornerShape(15.dp)) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(4.dp)); Text("مشاركة") } }; if (!terminal) OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = WaslhaDanger)) { Text("إلغاء الرحلة", fontWeight = FontWeight.Bold) } else Button(onClick = onDone, modifier = Modifier.fillMaxWidth().height(49.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = WaslhaGreen)) { Text("العودة إلى رحلاتي", fontWeight = FontWeight.Black) } } } } }
 }
 
 @Composable private fun Info(title: String, value: String) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(title, color = WaslhaMuted, fontSize = 11.sp); Text(value, color = WaslhaInk, fontWeight = FontWeight.Bold, fontSize = 11.sp) } }
