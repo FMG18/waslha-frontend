@@ -4,11 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 
-/**
- * Stable authenticated entry point.
- * Authentication stays isolated; the full taxi experience is launched only
- * after a valid local session exists.
- */
+/** Stable authenticated entry point. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,7 +16,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        startActivity(Intent(this, TaxiBookingActivity::class.java))
+        startActivity(Intent(this, PassengerHomeV2Activity::class.java))
         finish()
     }
 }
