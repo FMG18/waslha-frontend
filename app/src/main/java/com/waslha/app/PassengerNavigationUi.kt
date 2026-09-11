@@ -5,8 +5,8 @@ import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,12 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -73,7 +73,7 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             NavItem(0, selectedTab == 0, "الرئيسية", Icons.Default.Home, onTab)
-            NavItem(1, selectedTab == 1, "رحلاتي", Icons.Default.History, onTab)
+            NavItem(1, selectedTab == 1, "رحلاتي", Icons.Default.LocationOn, onTab)
             NavItem(2, selectedTab == 2, "حسابي", Icons.Default.AccountCircle, onTab)
         }
     }
@@ -101,6 +101,7 @@ private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx
         animationSpec = tween(180),
         label = "navIconSize"
     )
+
     Column(
         modifier = Modifier
             .clickable { onTab(index) }
@@ -127,9 +128,17 @@ fun SettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Text("الإعدادات", fontSize = 25.sp, fontWeight = FontWeight.Black, color = NavInk)
         }
+        Text("خصّص تجربة وصلها على طريقتك", color = NavMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp))
+
         SettingsGroup("تفضيلات التطبيق") {
-            SettingToggleRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notificationsEnabled) { notificationsEnabled = it; prefs.edit().putBoolean("notifications", it).apply() }
-            SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.LocationOn, locationEnabled) { locationEnabled = it; prefs.edit().putBoolean("location", it).apply() }
+            SettingToggleRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notificationsEnabled) {
+                notificationsEnabled = it
+                prefs.edit().putBoolean("notifications", it).apply()
+            }
+            SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.LocationOn, locationEnabled) {
+                locationEnabled = it
+                prefs.edit().putBoolean("location", it).apply()
+            }
         }
         SettingsGroup("الحساب والحماية") {
             SettingActionRow("الخصوصية والأمان", "حماية الحساب وصلاحيات التطبيق", Icons.Default.Security) { launchFeature(context, "security") }
@@ -162,8 +171,13 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
-        Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
+        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+            Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp))
+        }
+        Column(Modifier.weight(1f).padding(start = 11.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, color = NavInk)
+            Text(subtitle, fontSize = 10.sp, color = NavMuted)
+        }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
@@ -171,8 +185,13 @@ private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.com
 @Composable
 private fun SettingActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
-        Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
+        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+            Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp))
+        }
+        Column(Modifier.weight(1f).padding(start = 11.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, color = NavInk)
+            Text(subtitle, fontSize = 10.sp, color = NavMuted)
+        }
         Text("‹", color = NavMuted, fontSize = 24.sp)
     }
 }
@@ -185,7 +204,9 @@ fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> U
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
         Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), border = BorderStroke(1.dp, NavLine), elevation = CardDefaults.cardElevation(0.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(18.dp)) { Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.padding(11.dp).size(37.dp)) }
+                Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+                    Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.padding(11.dp).size(37.dp))
+                }
                 Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 20.sp)
                 Text(sessionStore.email ?: sessionStore.phone ?: "بيانات التواصل غير متاحة", color = NavMuted, fontSize = 11.sp)
                 TextButton(onClick = { launchFeature(context, "account") }) { Text("تعديل الحساب", color = NavGreen, fontWeight = FontWeight.Bold) }
