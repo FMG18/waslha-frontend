@@ -1,17 +1,25 @@
 package com.waslha.app
 
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
 
 class FeatureHostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Keep Android system chrome visually consistent with Waslha's light UI.
+        window.statusBarColor = AndroidColor.WHITE
+        window.navigationBarColor = AndroidColor.WHITE
+        window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+
         val screen = intent.getStringExtra("screen") ?: "support"
         val session = SessionStore(this)
         setContent {
-            MaterialTheme {
+            WaslhaTheme {
                 when (screen) {
                     "account" -> AccountCenterScreen(session) { finish() }
                     "settings" -> SettingsCenterScreen { finish() }
