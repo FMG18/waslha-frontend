@@ -16,6 +16,8 @@ class FeatureHostActivity : ComponentActivity() {
                     "payments" -> PaymentsScreen { finish() }
                     "notifications" -> NotificationsScreen { finish() }
                     "rating" -> RatingScreen { finish() }
+                    "security" -> SecurityScreen { finish() }
+                    "about" -> AboutScreen { finish() }
                     else -> SupportScreen { finish() }
                 }
             }
