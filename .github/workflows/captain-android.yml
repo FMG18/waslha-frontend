@@ -1,0 +1,41 @@
+name: Waslha Captain Android
+
+on:
+  push:
+    paths:
+      - 'captain/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-captain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build Captain release APK
+        run: gradle :captain:assembleRelease --stacktrace
+
+      - name: Upload Captain APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: waslha-captain-beta
+          path: captain/build/outputs/apk/release/captain-release.apk
+          if-no-files-found: error
