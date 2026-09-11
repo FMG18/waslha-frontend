@@ -22,7 +22,6 @@
         <activity android:name=".AuthActivity" android:exported="false" />
         <activity android:name=".GoogleSignInActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="false" />
-        <activity android:name=".PassengerHomeV2Activity" android:exported="false" />
         <activity android:name=".FeatureHostActivity" android:exported="false" />
         <activity android:name=".SafeTaxiActivity" android:exported="false" />
         <activity android:name=".TaxiBookingActivity" android:exported="false" />
