@@ -5,20 +5,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,9 +51,9 @@ private val NavDanger = Color(0xFFB42318)
 fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
         colors = CardDefaults.cardColors(Color.White),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -60,38 +62,23 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
         ) {
             NavItem(0, selectedTab == 0, "الرئيسية", Icons.Default.Home, onTab)
             NavItem(1, selectedTab == 1, "رحلاتي", Icons.Default.History, onTab)
-            NavItem(2, selectedTab == 2, "حسابي", Icons.Default.Person, onTab)
+            NavItem(2, selectedTab == 2, "حسابي", Icons.Default.AccountCircle, onTab)
         }
     }
 }
 
 @Composable
-private fun NavItem(
-    index: Int,
-    selected: Boolean,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onTab: (Int) -> Unit
-) {
+private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onTab: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .clickable { onTab(index) }
-            .background(if (selected) NavSoft else Color.Transparent, RoundedCornerShape(18.dp))
+            .background(if (selected) NavSoft else Color.Transparent, RoundedCornerShape(22.dp))
             .padding(horizontal = 18.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            icon,
-            null,
-            tint = if (selected) NavGreen else NavMuted,
-            modifier = Modifier.size(23.dp)
-        )
-        Text(
-            label,
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
-            color = if (selected) NavInk else NavMuted
-        )
+        Icon(icon, null, tint = if (selected) NavGreen else NavMuted, modifier = Modifier.size(23.dp))
+        Spacer(Modifier.size(2.dp))
+        Text(label, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Medium, color = if (selected) NavInk else NavMuted)
     }
 }
 
@@ -101,61 +88,24 @@ fun SettingsScreen(onBack: () -> Unit) {
     var locationEnabled by remember { mutableStateOf(true) }
     var openDialog by remember { mutableStateOf<String?>(null) }
 
-    Column(
-        Modifier.fillMaxWidth().background(NavBg).padding(18.dp)
-    ) {
+    Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text("رجوع", color = NavGreen, fontWeight = FontWeight.Bold)
-            }
-            Text(
-                "الإعدادات",
-                modifier = Modifier.padding(start = 8.dp),
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Black,
-                color = NavInk
-            )
+            TextButton(onClick = onBack) { Text("رجوع", color = NavGreen, fontWeight = FontWeight.Bold) }
+            Spacer(Modifier.weight(1f))
+            Text("الإعدادات", fontSize = 26.sp, fontWeight = FontWeight.Black, color = NavInk)
         }
-
         Card(
             Modifier.fillMaxWidth().padding(top = 14.dp),
             colors = CardDefaults.cardColors(Color.White),
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            Column(Modifier.padding(vertical = 7.dp)) {
-                SettingToggleRow(
-                    title = "الإشعارات",
-                    subtitle = "تنبيهات الرحلات والعروض",
-                    icon = Icons.Default.Notifications,
-                    checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it }
-                )
-                SettingToggleRow(
-                    title = "الموقع أثناء الحجز",
-                    subtitle = "استخدام موقعك لتحديد نقطة الانطلاق",
-                    icon = Icons.Default.Home,
-                    checked = locationEnabled,
-                    onCheckedChange = { locationEnabled = it }
-                )
-                SettingActionRow(
-                    title = "الخصوصية والأمان",
-                    subtitle = "حماية الحساب ومعلوماته",
-                    icon = Icons.Default.Security,
-                    onClick = { openDialog = "privacy" }
-                )
-                SettingActionRow(
-                    title = "قفل الحساب",
-                    subtitle = "معلومات الحماية وتسجيل الدخول",
-                    icon = Icons.Default.Lock,
-                    onClick = { openDialog = "lock" }
-                )
-                SettingActionRow(
-                    title = "عن وصلها",
-                    subtitle = "الإصدار ومعلومات التطبيق",
-                    icon = Icons.Default.Info,
-                    onClick = { openDialog = "about" }
-                )
+            Column(Modifier.padding(vertical = 6.dp)) {
+                SettingToggleRow("الإشعارات", "تنبيهات الرحلات والعروض", Icons.Default.Notifications, notificationsEnabled) { notificationsEnabled = it }
+                SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.Home, locationEnabled) { locationEnabled = it }
+                SettingActionRow("الخصوصية والأمان", "خيارات حماية الحساب", Icons.Default.Security) { openDialog = "privacy" }
+                SettingActionRow("قفل الحساب", "معلومات الحماية وتسجيل الدخول", Icons.Default.Lock) { openDialog = "lock" }
+                SettingActionRow("عن وصلها", "الإصدار ومعلومات التطبيق", Icons.Default.Info) { openDialog = "about" }
             }
         }
     }
@@ -167,35 +117,22 @@ fun SettingsScreen(onBack: () -> Unit) {
             else -> "عن وصلها"
         }
         val body = when (dialog) {
-            "privacy" -> "يستخدم التطبيق صلاحيات الموقع فقط عند الحاجة إلى تحديد نقطة الانطلاق."
-            "lock" -> "جلسة تسجيل الدخول محفوظة محليًا، ويمكن إنهاؤها من صفحة الحساب."
-            else -> "وصلها — تطبيق تاكسي للركاب. هذه نسخة تجريبية مخصصة لرحلات التاكسي داخل سوريا."
+            "privacy" -> "يستخدم التطبيق صلاحية الموقع عند الحاجة إلى تحديد نقطة الانطلاق."
+            "lock" -> "يمكن إنهاء جلسة الدخول من صفحة الحساب."
+            else -> "وصلها — تطبيق تاكسي للركاب."
         }
         AlertDialog(
             onDismissRequest = { openDialog = null },
             title = { Text(title, fontWeight = FontWeight.Black, color = NavInk) },
             text = { Text(body, color = NavMuted) },
-            confirmButton = {
-                TextButton(onClick = { openDialog = null }) {
-                    Text("حسنًا", color = NavGreen, fontWeight = FontWeight.Bold)
-                }
-            }
+            confirmButton = { TextButton(onClick = { openDialog = null }) { Text("حسنًا", color = NavGreen, fontWeight = FontWeight.Bold) } }
         )
     }
 }
 
 @Composable
-private fun SettingToggleRow(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = NavGreen, modifier = Modifier.size(24.dp))
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(title, fontWeight = FontWeight.Bold, color = NavInk)
@@ -206,17 +143,9 @@ private fun SettingToggleRow(
 }
 
 @Composable
-private fun SettingActionRow(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
+private fun SettingActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = NavGreen, modifier = Modifier.size(24.dp))
@@ -224,43 +153,20 @@ private fun SettingActionRow(
             Text(title, fontWeight = FontWeight.Bold, color = NavInk)
             Text(subtitle, fontSize = 10.sp, color = NavMuted)
         }
-        Text("‹", color = NavMuted, fontSize = 26.sp, fontWeight = FontWeight.Light)
+        Text("‹", color = NavMuted, fontSize = 25.sp)
     }
 }
 
 @Composable
-fun PassengerLegacyProfileScreen(
-    sessionStore: SessionStore,
-    onSettings: () -> Unit,
-    onLogout: () -> Unit
-) {
-    Column(Modifier.background(NavBg).padding(18.dp)) {
+fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> Unit, onLogout: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Text("حسابي", fontSize = 30.sp, fontWeight = FontWeight.Black, color = NavInk)
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
-
-        Card(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
-            colors = CardDefaults.cardColors(Color.White),
-            shape = RoundedCornerShape(22.dp),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها",
-                            fontWeight = FontWeight.Black,
-                            color = NavInk,
-                            fontSize = 20.sp
-                        )
-                        Text(
-                            sessionStore.email ?: sessionStore.phone ?: "بيانات التواصل غير متاحة",
-                            color = NavMuted,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Icon(Icons.Default.Person, null, tint = NavGreen, modifier = Modifier.size(32.dp))
-                }
+        Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.size(46.dp))
+                Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 19.sp)
+                Text(sessionStore.email ?: sessionStore.phone ?: "بيانات التواصل غير متاحة", color = NavMuted, fontSize = 11.sp)
                 Text("معرّف المستخدم: ${sessionStore.userId ?: "—"}", color = NavMuted, fontSize = 10.sp)
                 TextButton(onClick = onSettings) { Text("الإعدادات", color = NavGreen, fontWeight = FontWeight.Bold) }
                 TextButton(onClick = onLogout) { Text("تسجيل الخروج", color = NavDanger, fontWeight = FontWeight.Bold) }
