@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -84,8 +86,13 @@ private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx
     val iconTint by animateColorAsState(if (selected) NavGreen else NavMuted, tween(180), label = "navIconTint")
     val horizontalPadding by animateDpAsState(if (selected) 20.dp else 16.dp, tween(180), label = "navPadding")
     val iconSize by animateDpAsState(if (selected) 24.dp else 21.dp, tween(180), label = "navIconSize")
+    val scale by animateFloatAsState(if (selected) 1f else .96f, tween(180), label = "navScale")
     Column(
-        modifier = Modifier.clickable { onTab(index) }.background(container, RoundedCornerShape(18.dp)).padding(horizontal = horizontalPadding, vertical = 8.dp),
+        modifier = Modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable { onTab(index) }
+            .background(container, RoundedCornerShape(18.dp))
+            .padding(horizontal = horizontalPadding, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(colors = CardDefaults.cardColors(if (selected) Color.White else Color.Transparent), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(0.dp)) {
@@ -139,8 +146,10 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val iconBg by animateColorAsState(if (checked) NavSoft else NavBg, tween(180), label = "toggleIconBg")
+    val iconTint by animateColorAsState(if (checked) NavGreen else NavMuted, tween(180), label = "toggleIconTint")
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
+        Card(colors = CardDefaults.cardColors(iconBg), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(icon, null, tint = iconTint, modifier = Modifier.padding(9.dp).size(21.dp)) }
         Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -148,7 +157,15 @@ private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.com
 
 @Composable
 private fun SettingActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+    val pressedScale by animateFloatAsState(1f, tween(120), label = "settingScale")
+    Row(
+        Modifier
+            .graphicsLayer { scaleX = pressedScale; scaleY = pressedScale }
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 15.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
         Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
         Text("‹", color = NavMuted, fontSize = 24.sp)
