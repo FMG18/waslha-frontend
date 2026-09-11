@@ -1,8 +1,12 @@
 package com.waslha.captain
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,35 +17,45 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +64,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.launch
 
 private val Green = Color(0xFF087F5B)
 private val GreenDark = Color(0xFF055C42)
@@ -58,6 +74,7 @@ private val Ink = Color(0xFF12201B)
 private val Muted = Color(0xFF6D7A75)
 private val Background = Color(0xFFF5F8F6)
 private val White = Color.White
+private val Line = Color(0xFFDDE5E1)
 
 class CaptainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,27 +85,20 @@ class CaptainActivity : ComponentActivity() {
 
 @Composable
 private fun CaptainApp() {
-    var online by remember { mutableStateOf(false) }
-    var tab by remember { mutableStateOf(0) }
+    val session = remember { CaptainSession(androidx.compose.ui.platform.LocalContext.current) }
+    var signedIn by remember { mutableStateOf(session.isSignedIn) }
 
     MaterialTheme {
-        Surface(color = Background, modifier = Modifier.fillMaxSize()) {
-            Scaffold(
-                bottomBar = {
-                    NavigationBar(
-                        containerColor = White,
-                        modifier = Modifier.navigationBarsPadding()
-                    ) {
-                        NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.Default.DirectionsCar, null) }, label = { Text("الرئيسية") })
-                        NavigationBarItem(tab == 1, { tab = 1 }, icon = { Icon(Icons.Default.AccessTime, null) }, label = { Text("الرحلات") })
-                        NavigationBarItem(tab == 2, { tab = 2 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("حسابي") })
-                    }
+        Surface(Modifier.fillMaxSize(), color = Background) {
+            if (signedIn) {
+                CaptainHomeShell(session) {
+                    session.clear()
+                    signedIn = false
                 }
-            ) { padding ->
-                when (tab) {
-                    0 -> CaptainHome(Modifier.padding(padding), online) { online = !online }
-                    1 -> TripsPlaceholder(Modifier.padding(padding))
-                    else -> ProfilePlaceholder(Modifier.padding(padding))
+            } else {
+                CaptainLogin { user ->
+                    session.save(user)
+                    signedIn = true
                 }
             }
         }
@@ -96,62 +106,179 @@ private fun CaptainApp() {
 }
 
 @Composable
-private fun CaptainHome(modifier: Modifier, online: Boolean, onToggle: () -> Unit) {
+private fun CaptainLogin(onSuccess: (VerifySessionResponse) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var phone by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var devCode by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var sent by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    fun request() {
+        if (phone.trim().length < 8) { error = "أدخل رقم هاتف صحيح"; return }
+        loading = true
+        error = null
+        scope.launch {
+            runCatching { CaptainApiProvider.api.requestCode(OtpRequest(phone.trim())) }
+                .onSuccess { result ->
+                    devCode = result.data?.devCode
+                    sent = true
+                }
+                .onFailure { error = it.message ?: "تعذر إرسال رمز الدخول" }
+            loading = false
+        }
+    }
+
+    fun verify() {
+        if (code.trim().length < 4) { error = "أدخل رمز التحقق"; return }
+        loading = true
+        error = null
+        scope.launch {
+            runCatching { CaptainApiProvider.api.verifyCode(VerifyOtpRequest(phone.trim(), code.trim())) }
+                .onSuccess { result ->
+                    val session = result.data
+                    if (result.success && session != null && session.role.equals("driver", true)) onSuccess(session)
+                    else error = "هذا الحساب غير مسجل ككابتن"
+                }
+                .onFailure { error = it.message ?: "تعذر تسجيل الدخول" }
+            loading = false
+        }
+    }
+
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Card(
+            Modifier.fillMaxWidth().padding(22.dp),
+            shape = RoundedCornerShape(30.dp),
+            colors = CardDefaults.cardColors(White)
+        ) {
+            Column(
+                Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(Modifier.size(72.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.DirectionsCar, null, tint = Green, modifier = Modifier.size(38.dp))
+                }
+                Text("وصلها كابتن", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
+                Text("سجل دخولك وابدأ باستقبال الرحلات", color = Muted, fontSize = 13.sp)
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it.filter(Char::isDigit) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("رقم الهاتف") },
+                    leadingIcon = { Icon(Icons.Default.Phone, null) },
+                    singleLine = true
+                )
+                if (sent) {
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it.filter(Char::isDigit).take(6) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("رمز التحقق") },
+                        singleLine = true
+                    )
+                    devCode?.takeIf { it.isNotBlank() }?.let {
+                        Text("رمز الاختبار: $it", color = Green, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+                error?.let { Text(it, color = Color(0xFFB42318), fontSize = 12.sp) }
+                Button(
+                    onClick = { if (sent) verify() else request() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !loading,
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Text(if (sent) "دخول" else "إرسال الرمز", fontWeight = FontWeight.Bold)
+                }
+                if (sent) TextButton(onClick = { sent = false; code = "" }) { Text("تغيير الرقم") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CaptainHomeShell(session: CaptainSession, onLogout: () -> Unit) {
+    var tab by remember { mutableStateOf(0) }
+    val title = when (tab) { 0 -> "الرئيسية"; 1 -> "الرحلات"; else -> "حسابي" }
+    val online = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var driver by remember { mutableStateOf<Driver?>(null) }
+    var trips by remember { mutableStateOf<List<Trip>>(emptyList()) }
+
+    LaunchedEffect(session.userId) {
+        val id = session.userId ?: return@LaunchedEffect
+        runCatching { CaptainApiProvider.api.driver(id) }.onSuccess { driver = it.data }
+        runCatching { CaptainApiProvider.api.trips(id) }.onSuccess { trips = it.data.orEmpty() }
+    }
+
+    Scaffold(
+        topBar = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    Text(if (driver?.name.isNullOrBlank()) "أهلاً كابتن" else "أهلاً ${driver?.name}", color = Muted, fontSize = 12.sp)
+                }
+                IconButton(onClick = {}) { Icon(Icons.Default.Notifications, "الإشعارات", tint = Green) }
+            }
+        },
+        bottomBar = {
+            NavigationBar(containerColor = White, modifier = Modifier.navigationBarsPadding()) {
+                NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.Default.DirectionsCar, null) }, label = { Text("الرئيسية") })
+                NavigationBarItem(tab == 1, { tab = 1 }, icon = { Icon(Icons.Default.AccessTime, null) }, label = { Text("الرحلات") })
+                NavigationBarItem(tab == 2, { tab = 2 }, icon = { Icon(Icons.Default.AccountCircle, null) }, label = { Text("حسابي") })
+            }
+        }
+    ) { padding ->
+        when (tab) {
+            0 -> CaptainDashboard(Modifier.padding(padding), online.value, driver, trips) { enabled ->
+                online.value = enabled
+                session.userId?.let { id -> scope.launch { runCatching { CaptainApiProvider.api.availability(id, DriverAvailabilityRequest(enabled)) }.onSuccess { driver = it.data } } }
+            }
+            1 -> CaptainTrips(Modifier.padding(padding), trips)
+            else -> CaptainProfile(Modifier.padding(padding), driver, onLogout)
+        }
+    }
+}
+
+@Composable
+private fun CaptainDashboard(modifier: Modifier, online: Boolean, driver: Driver?, trips: List<Trip>, onOnlineChange: (Boolean) -> Unit) {
+    val todayTrips = trips.count { it.status == "completed" }
+    val earnings = trips.filter { it.status == "completed" }.sumOf { it.estimatedFare }
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(18.dp)
     ) {
         item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("أهلًا كابتن", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("خلينا نوصلك لأكثر اليوم", color = Muted, fontSize = 12.sp)
-                }
-                Box(Modifier.size(46.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Notifications, null, tint = Green, modifier = Modifier.size(24.dp))
-                }
-            }
-        }
-
-        item {
-            Card(
-                Modifier.fillMaxWidth().clickable { onToggle() },
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(if (online) Green else White),
-                elevation = CardDefaults.cardElevation(1.dp)
-            ) {
+            Card(Modifier.fillMaxWidth().clickable { onOnlineChange(!online) }, shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(if (online) Green else White)) {
                 Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(54.dp).clip(CircleShape).background(if (online) Color.White.copy(alpha = .16f) else Mint),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(Modifier.size(54.dp).clip(CircleShape).background(if (online) White.copy(.15f) else Mint), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.PowerSettingsNew, null, tint = if (online) White else Green, modifier = Modifier.size(27.dp))
                     }
                     Spacer(Modifier.size(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (online) "أنت متصل الآن" else "أنت غير متصل", color = if (online) White else Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text(if (online) "تقدر تستقبل طلبات جديدة" else "فعّل الحالة حتى تستقبل طلبات", color = if (online) White.copy(alpha = .75f) else Muted, fontSize = 12.sp)
+                        Text(if (online) "تقدر تستقبل طلبات جديدة" else "فعّل حالتك حتى تستقبل الطلبات", color = if (online) White.copy(.75f) else Muted, fontSize = 12.sp)
                     }
                     Text(if (online) "متصل" else "تشغيل", color = if (online) White else Green, fontWeight = FontWeight.Bold)
                 }
             }
         }
-
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard("رحلات اليوم", "0", Icons.Default.CheckCircle, Modifier.weight(1f))
-                StatCard("أرباح اليوم", "0 ل.س", Icons.Default.LocationOn, Modifier.weight(1f))
-                StatCard("التقييم", "5.0", Icons.Default.Star, Modifier.weight(1f))
+                CaptainStat("رحلات اليوم", todayTrips.toString(), Icons.Default.CheckCircle, Modifier.weight(1f))
+                CaptainStat("أرباح", "$earnings ل.س", Icons.Default.Work, Modifier.weight(1f))
+                CaptainStat("التقييم", String.format("%.1f", driver?.rating ?: 5.0), Icons.Default.Star, Modifier.weight(1f))
             }
         }
-
         item {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(White)) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("الطلبات الجديدة", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Text("ماكو طلبات حالياً", color = Muted, fontSize = 13.sp)
-                    Text("راح يظهر الطلب هنا فور توفره.", color = Muted, fontSize = 11.sp)
+                    Text("سيظهر هنا أقرب طلب متاح لك.", color = Muted, fontSize = 12.sp)
+                    Text("حالة التطبيق: ${if (online) "جاهز للاستقبال" else "متوقف عن الاستقبال"}", color = Green, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                 }
             }
         }
@@ -159,36 +286,73 @@ private fun CaptainHome(modifier: Modifier, online: Boolean, onToggle: () -> Uni
 }
 
 @Composable
-private fun StatCard(title: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+private fun CaptainStat(title: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
     Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(icon, null, tint = Green, modifier = Modifier.size(20.dp))
-            Text(value, color = Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Text(value, color = Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
             Text(title, color = Muted, fontSize = 10.sp)
         }
     }
 }
 
 @Composable
-private fun TripsPlaceholder(modifier: Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.AccessTime, null, tint = Green, modifier = Modifier.size(44.dp))
-            Spacer(Modifier.height(10.dp))
-            Text("رحلات الكابتن", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("سجل الرحلات سيُربط بالـBackend في الدفعة القادمة.", color = Muted, fontSize = 12.sp)
+private fun CaptainTrips(modifier: Modifier, trips: List<Trip>) {
+    if (trips.isEmpty()) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.AccessTime, null, tint = Green, modifier = Modifier.size(46.dp))
+                Spacer(Modifier.size(10.dp))
+                Text("لا توجد رحلات بعد", color = Ink, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text("رحلاتك المكتملة ستظهر هنا.", color = Muted, fontSize = 12.sp)
+            }
+        }
+        return
+    }
+    LazyColumn(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(18.dp)) {
+        items(trips) { trip ->
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(White)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, null, tint = Green)
+                        Spacer(Modifier.size(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("رحلة #${trip.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Bold)
+                            Text("${trip.distanceKm} كم", color = Muted, fontSize = 11.sp)
+                        }
+                        Text("${trip.estimatedFare} ${trip.currency}", color = Green, fontWeight = FontWeight.Black)
+                    }
+                    Text("الحالة: ${trip.status}", color = Muted, fontSize = 12.sp)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ProfilePlaceholder(modifier: Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Person, null, tint = Green, modifier = Modifier.size(44.dp))
-            Spacer(Modifier.height(10.dp))
-            Text("حساب الكابتن", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("الملف، السيارة، الأرباح والإعدادات قادمة ضمن مراحل التطبيق.", color = Muted, fontSize = 12.sp)
+private fun CaptainProfile(modifier: Modifier, driver: Driver?, onLogout: () -> Unit) {
+    LazyColumn(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(18.dp)) {
+        item {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(White)) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(58.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = Green, modifier = Modifier.size(30.dp)) }
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(driver?.name ?: "الكابتن", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(driver?.phone ?: "رقم الهاتف غير متوفر", color = Muted, fontSize = 12.sp)
+                    }
+                }
+            }
         }
+        item {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(White)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("المركبة", color = Ink, fontWeight = FontWeight.Bold)
+                    Text(driver?.vehicle ?: "غير محددة", color = Muted, fontSize = 12.sp)
+                    Text("اللوحة: ${driver?.plate ?: "غير محددة"}", color = Muted, fontSize = 12.sp)
+                }
+            }
+        }
+        item { TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("تسجيل الخروج", color = Color(0xFFB42318), fontWeight = FontWeight.Bold) } }
     }
 }
