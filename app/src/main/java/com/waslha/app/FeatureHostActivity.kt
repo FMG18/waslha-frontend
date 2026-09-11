@@ -10,7 +10,6 @@ class FeatureHostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Keep Android system chrome visually consistent with Waslha's light UI.
         window.statusBarColor = AndroidColor.WHITE
         window.navigationBarColor = AndroidColor.WHITE
         window.navigationBarDividerColor = AndroidColor.WHITE
@@ -29,7 +28,7 @@ class FeatureHostActivity : ComponentActivity() {
                     "notifications" -> NotificationsScreen { finish() }
                     "rating" -> RatingScreen { finish() }
                     "security" -> SecurityScreen { finish() }
-                    "about" -> AboutScreen { finish() }
+                    "about" -> CurrentAboutScreen { finish() }
                     else -> SupportScreen { finish() }
                 }
             }
