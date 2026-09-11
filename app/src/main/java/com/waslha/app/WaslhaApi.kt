@@ -43,6 +43,12 @@ interface WaslhaApi {
 
     @POST("/api/v1/trips/{id}/cancel")
     suspend fun cancelTrip(@Path("id") id: String, @Body body: CancelTripRequest): ApiEnvelope<Trip>
+
+    @GET("/api/v1/notifications")
+    suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<NotificationDto>>
+
+    @PATCH("/api/v1/notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
 }
 
 data class AppUpdateDto(
@@ -67,3 +73,14 @@ data class TripTrackingDto(
     val distanceToPickupKm: Double? = null,
     val updatedAt: Long = 0L
 )
+data class NotificationDto(
+    val id: String,
+    val title: String,
+    val body: String,
+    val type: String = "trip",
+    val tripId: String? = null,
+    val read: Boolean = false,
+    val createdAt: Long = 0L
+)
+data class MarkNotificationReadRequest(val userId: String)
+data class NotificationReadDto(val id: String, val read: Boolean)
