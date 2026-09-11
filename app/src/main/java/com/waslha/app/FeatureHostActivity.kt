@@ -13,6 +13,7 @@ class FeatureHostActivity : ComponentActivity() {
         // Keep Android system chrome visually consistent with Waslha's light UI.
         window.statusBarColor = AndroidColor.WHITE
         window.navigationBarColor = AndroidColor.WHITE
+        window.navigationBarDividerColor = AndroidColor.WHITE
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
