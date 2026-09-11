@@ -12,8 +12,8 @@ android {
         applicationId = "com.waslha.captain"
         minSdk = 26
         targetSdk = 35
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = 101
+        versionName = "1.0.1"
     }
 
     compileOptions {
@@ -23,9 +23,7 @@ android {
 
     kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 }
 
 dependencies {
@@ -44,5 +42,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
