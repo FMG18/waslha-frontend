@@ -62,14 +62,30 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Normalize passenger Compose imports
+      - name: Patch passenger Kotlin compatibility
         shell: bash
         run: |
-          test -f app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
-          test -f app/src/main/java/com/waslha/app/TripExperience.kt
-          grep -qxF 'import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt || sed -i '/import androidx.compose.foundation.layout.width/a import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
-          grep -qxF 'import androidx.compose.material.icons.filled.MyLocation' app/src/main/java/com/waslha/app/TripExperience.kt || sed -i '/import androidx.compose.material.icons.filled.LocationOn/a import androidx.compose.material.icons.filled.MyLocation' app/src/main/java/com/waslha/app/TripExperience.kt
-          sed -i '/import androidx.compose.foundation.layout.weight/d' app/src/main/java/com/waslha/app/PassengerFeatures.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          taxi = Path('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt')
+          s = taxi.read_text(encoding='utf-8')
+          s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
+          if 'import androidx.compose.foundation.layout.RowScope\n' not in s:
+              s = s.replace('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n')
+          s = s.replace('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:')
+          taxi.write_text(s, encoding='utf-8')
+
+          trip = Path('app/src/main/java/com/waslha/app/TripExperience.kt')
+          s = trip.read_text(encoding='utf-8')
+          if 'import androidx.compose.material.icons.filled.MyLocation\n' not in s:
+              s = s.replace('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n')
+          trip.write_text(s, encoding='utf-8')
+
+          pf = Path('app/src/main/java/com/waslha/app/PassengerFeatures.kt')
+          s = pf.read_text(encoding='utf-8')
+          s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
+          pf.write_text(s, encoding='utf-8')
+          PY
 
       - name: Build signed release APK
         run: |
