@@ -8,8 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -273,7 +272,7 @@ private fun WaslhaCustomerApp(
 
         if (trip != null && page != CustomerPage.Map) {
             ActiveTripCardOverlay(
-                trip!!,
+                trip = trip!!,
                 onOpen = { page = CustomerPage.Trips },
                 onCancel = {
                     val id = trip?.id ?: return@ActiveTripCardOverlay
@@ -347,23 +346,9 @@ private fun CustomerHome(
                             Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(24.dp))
                         }
                     }
-                    RoutePoint(
-                        label = "من",
-                        value = pickupLabel,
-                        icon = Icons.Default.MyLocation,
-                        accent = false,
-                        loading = locationLoading,
-                        onClick = onRefreshLocation
-                    )
+                    RoutePoint("من", pickupLabel, Icons.Default.MyLocation, false, locationLoading, onRefreshLocation)
                     RouteConnector()
-                    RoutePoint(
-                        label = "إلى",
-                        value = destination?.title ?: "اختيار وجهتك من الخريطة",
-                        icon = Icons.Default.LocationOn,
-                        accent = true,
-                        loading = false,
-                        onClick = onDestination
-                    )
+                    RoutePoint("إلى", destination?.title ?: "اختيار وجهتك من الخريطة", Icons.Default.LocationOn, true, false, onDestination)
                     if (destination != null) {
                         Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Shield, null, tint = CAccent, modifier = Modifier.size(16.dp))
@@ -381,13 +366,7 @@ private fun CustomerHome(
             }
         }
         item {
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(CWhite),
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, CLine),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), border = BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(CSoft), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CreditCard, null, tint = CPrimary, modifier = Modifier.size(21.dp))
@@ -395,144 +374,62 @@ private fun CustomerHome(
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
                         Text("الدفع نقداً", color = CInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(
-                            when {
-                                estimateLoading -> "جاري حساب الأجرة…"
-                                estimate != null -> "السعر التقديري للرحلة"
-                                else -> "حدد الوجهة لعرض السعر"
-                            },
-                            color = CMuted,
-                            fontSize = 10.sp
-                        )
+                        Text(when { estimateLoading -> "جاري حساب الأجرة…"; estimate != null -> "السعر التقديري للرحلة"; else -> "حدد الوجهة لعرض السعر" }, color = CMuted, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         if (estimateLoading) CircularProgressIndicator(Modifier.size(18.dp), color = CPrimary, strokeWidth = 2.dp)
-                        else if (estimate != null) {
-                            Text("${estimate!!.estimatedFare}", color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text(estimate!!.currency, color = CMuted, fontSize = 9.sp)
-                        } else Text("—", color = CMuted, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                        else if (estimate != null) { Text("${estimate!!.estimatedFare}", color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp); Text(estimate!!.currency, color = CMuted, fontSize = 9.sp) }
+                        else Text("—", color = CMuted, fontWeight = FontWeight.Black, fontSize = 18.sp)
                     }
                 }
-                if (estimate != null) {
-                    Row(Modifier.fillMaxWidth().background(CSoft2).padding(horizontal = 14.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("المسافة ${"%.1f".format(estimate!!.distanceKm)} كم", color = CMuted, fontSize = 10.sp)
-                        Text("المدة ${estimate!!.durationMin} دقيقة تقريباً", color = CMuted, fontSize = 10.sp)
-                    }
+                if (estimate != null) Row(Modifier.fillMaxWidth().background(CSoft2).padding(horizontal = 14.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("المسافة ${"%.1f".format(estimate!!.distanceKm)} كم", color = CMuted, fontSize = 10.sp)
+                    Text("المدة ${estimate!!.durationMin} دقيقة تقريباً", color = CMuted, fontSize = 10.sp)
                 }
             }
         }
         item {
             if (!error.isNullOrBlank()) {
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFFFF3F1)), shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color(0xFFF6C9C4))) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Info, null, tint = CDanger, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(7.dp))
-                        Text(error, color = CDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Info, null, tint = CDanger, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(7.dp)); Text(error, color = CDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            Button(
-                onClick = onRequest,
-                enabled = !requesting,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(19.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CPurple, disabledContainerColor = CPurple.copy(alpha = .55f))
-            ) {
+            Button(onClick = onRequest, enabled = !requesting, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(19.dp), colors = ButtonDefaults.buttonColors(containerColor = CPurple, disabledContainerColor = CPurple.copy(alpha = .55f))) {
                 if (requesting) CircularProgressIndicator(Modifier.size(21.dp), color = Color.White, strokeWidth = 2.dp)
-                else Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("اطلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                    Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(21.dp))
-                }
+                else Row(verticalAlignment = Alignment.CenterVertically) { Text("اطلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp); Spacer(Modifier.width(8.dp)); Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(21.dp)) }
             }
         }
-        item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Shield, null, tint = CPrimary, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("حجز واضح وسريع داخل سوريا", color = CMuted, fontSize = 10.sp)
-            }
-        }
+        item { Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Shield, null, tint = CPrimary, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("حجز واضح وسريع داخل سوريا", color = CMuted, fontSize = 10.sp) } }
     }
 }
 
 @Composable
-private fun RoutePoint(
-    label: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accent: Boolean,
-    loading: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
-        colors = CardDefaults.cardColors(if (accent) Color.White else Color.White.copy(alpha = .12f)),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
+private fun RoutePoint(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Boolean, loading: Boolean, onClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (accent) Color.White else Color.White.copy(alpha = .12f)), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(if (accent) CSoft else Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = if (accent) CPrimary else Color.White, modifier = Modifier.size(20.dp))
-            }
+            Box(Modifier.size(40.dp).clip(CircleShape).background(if (accent) CSoft else Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (accent) CPrimary else Color.White, modifier = Modifier.size(20.dp)) }
             Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(label, color = if (accent) CMuted else Color.White.copy(alpha = .68f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                Text(value, color = if (accent) CInk else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (accent) CPrimary else Color.White, strokeWidth = 2.dp)
-            else Icon(Icons.Default.ChevronLeft, null, tint = if (accent) CMuted else Color.White.copy(alpha = .72f), modifier = Modifier.size(20.dp))
+            Column(Modifier.weight(1f)) { Text(label, color = if (accent) CMuted else Color.White.copy(alpha = .68f), fontSize = 9.sp, fontWeight = FontWeight.Bold); Text(value, color = if (accent) CInk else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (accent) CPrimary else Color.White, strokeWidth = 2.dp) else Icon(Icons.Default.ChevronLeft, null, tint = if (accent) CMuted else Color.White.copy(alpha = .72f), modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun RouteConnector() {
-    Row(Modifier.padding(start = 18.dp, top = 1.dp, bottom = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(2.dp).height(12.dp).background(CAccent))
-        Spacer(Modifier.width(8.dp))
-        Text("مسار الرحلة", color = Color.White.copy(alpha = .55f), fontSize = 8.sp)
-    }
-}
+private fun RouteConnector() { Row(Modifier.padding(start = 18.dp, top = 1.dp, bottom = 1.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.width(2.dp).height(12.dp).background(CAccent)); Spacer(Modifier.width(8.dp)); Text("مسار الرحلة", color = Color.White.copy(alpha = .55f), fontSize = 8.sp) } }
 
 @Composable
-private fun SectionTitle(title: String, subtitle: String) {
-    Column {
-        Text(title, color = CInk, fontSize = 17.sp, fontWeight = FontWeight.Black)
-        Text(subtitle, color = CMuted, fontSize = 11.sp)
-    }
-}
+private fun SectionTitle(title: String, subtitle: String) { Column { Text(title, color = CInk, fontSize = 17.sp, fontWeight = FontWeight.Black); Text(subtitle, color = CMuted, fontSize = 11.sp) } }
 
 @Composable
 private fun VehicleRow(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Unit) {
-    Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
-        colors = CardDefaults.cardColors(if (selected) CSoft else CWhite),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (selected) CSoft else CWhite), shape = RoundedCornerShape(20.dp), border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) CPrimary else CSoft2), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color.White else CPrimary, modifier = Modifier.size(25.dp))
-            }
+            Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) CPrimary else CSoft2), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color.White else CPrimary, modifier = Modifier.size(25.dp)) }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                    if (vehicle.id == "economy") {
-                        Spacer(Modifier.width(7.dp))
-                        Text("شائع", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 8.sp)
-                    }
-                }
-                Text(vehicle.subtitle, color = CMuted, fontSize = 10.sp)
-            }
-            if (selected) {
-                Box(Modifier.size(25.dp).clip(CircleShape).background(CPrimary), contentAlignment = Alignment.Center) {
-                    Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
-                }
-            } else Icon(Icons.Default.ChevronLeft, null, tint = CMuted, modifier = Modifier.size(20.dp))
+            Column(Modifier.weight(1f)) { Row(verticalAlignment = Alignment.CenterVertically) { Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp); if (vehicle.id == "economy") { Spacer(Modifier.width(7.dp)); Text("شائع", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 8.sp) } }; Text(vehicle.subtitle, color = CMuted, fontSize = 10.sp) }
+            if (selected) Box(Modifier.size(25.dp).clip(CircleShape).background(CPrimary), contentAlignment = Alignment.Center) { Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp) } else Icon(Icons.Default.ChevronLeft, null, tint = CMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -540,229 +437,91 @@ private fun VehicleRow(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Uni
 @Composable
 private fun CustomerTrips(trips: List<Trip>, loading: Boolean, error: String?, onRefresh: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 18.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("رحلاتي", color = CInk, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                Text("رحلاتك السابقة والحالية", color = CMuted, fontSize = 12.sp)
-            }
-            IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "تحديث", tint = CPrimary) }
-        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("رحلاتي", color = CInk, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("رحلاتك السابقة والحالية", color = CMuted, fontSize = 12.sp) }; IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "تحديث", tint = CPrimary) } }
         Spacer(Modifier.height(10.dp))
         if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = CPrimary) }
         else if (trips.isEmpty()) EmptyState(Icons.Default.History, "لا توجد رحلات بعد", "بعد أول حجز ستظهر تفاصيل رحلتك هنا")
-        else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
-            items(trips) { trip ->
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, CLine)) {
-                    Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(trip.statusLabel(), color = CPrimary, fontWeight = FontWeight.Black)
-                            Text("${trip.estimatedFare} ${trip.currency}", color = CInk, fontWeight = FontWeight.Black)
-                        }
-                        Text("${trip.distanceKm} كم • ${trip.durationMin} دقيقة", color = CMuted, fontSize = 11.sp)
-                        Text("${trip.vehicleType} • ${trip.paymentMethod}", color = CMuted, fontSize = 10.sp)
-                    }
-                }
-            }
-        }
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 20.dp)) { items(trips) { trip -> Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, CLine)) { Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(trip.statusLabel(), color = CPrimary, fontWeight = FontWeight.Black); Text("${trip.estimatedFare} ${trip.currency}", color = CInk, fontWeight = FontWeight.Black) }; Text("${trip.distanceKm} كم • ${trip.durationMin} دقيقة", color = CMuted, fontSize = 11.sp); Text("${trip.vehicleType} • ${trip.paymentMethod}", color = CMuted, fontSize = 10.sp) } } } }
         if (!error.isNullOrBlank()) Text(error, color = CDanger, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
     }
 }
 
 @Composable
-private fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(78.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = CPrimary, modifier = Modifier.size(39.dp))
-        }
-        Spacer(Modifier.height(13.dp))
-        Text(title, color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
-        Text(subtitle, color = CMuted, fontSize = 11.sp)
-    }
-}
+private fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) { Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Box(Modifier.size(78.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(icon, null, tint = CPrimary, modifier = Modifier.size(39.dp)) }; Spacer(Modifier.height(13.dp)); Text(title, color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp); Text(subtitle, color = CMuted, fontSize = 11.sp) } }
 
 @Composable
 private fun CustomerProfile(sessionStore: SessionStore, onPage: (CustomerPage) -> Unit, onLogout: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
-        item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CPrimary), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(60.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.AccountCircle, null, tint = CPrimaryDark, modifier = Modifier.size(39.dp))
-                    }
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text(sessionStore.email ?: sessionStore.phone ?: "بيانات الحساب", color = Color.White.copy(alpha = .74f), fontSize = 11.sp)
-                    }
-                    IconButton(onClick = { onPage(CustomerPage.EditProfile) }) { Icon(Icons.Default.ChevronLeft, "تعديل", tint = Color.White) }
-                }
-            }
-        }
+        item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CPrimary), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(0.dp)) { Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(60.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) { Icon(Icons.Default.AccountCircle, null, tint = CPrimaryDark, modifier = Modifier.size(39.dp)) }; Spacer(Modifier.width(13.dp)); Column(Modifier.weight(1f)) { Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black); Text(sessionStore.email ?: sessionStore.phone ?: "بيانات الحساب", color = Color.White.copy(alpha = .74f), fontSize = 11.sp) }; IconButton(onClick = { onPage(CustomerPage.EditProfile) }) { Icon(Icons.Default.ChevronLeft, "تعديل", tint = Color.White) } } } }
         item { ProfileAction("الأماكن المحفوظة", "المنزل والعمل والمفضلة", Icons.Default.LocationOn) { onPage(CustomerPage.SavedPlaces) } }
         item { ProfileAction("طرق الدفع", "طريقة الدفع المتاحة", Icons.Default.CreditCard) { onPage(CustomerPage.Payments) } }
         item { ProfileAction("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications) { onPage(CustomerPage.Notifications) } }
         item { ProfileAction("الإعدادات", "تفضيلات التطبيق والخصوصية", Icons.Default.Settings) { onPage(CustomerPage.Settings) } }
         item { ProfileAction("المساعدة والدعم", "الأسئلة والحلول", Icons.Default.HelpOutline) { onPage(CustomerPage.Support) } }
         item { ProfileAction("عن وصلها", "معلومات الإصدار والتطبيق", Icons.Default.Info) { onPage(CustomerPage.About) } }
-        item {
-            OutlinedButton(onClick = onLogout, Modifier.fillMaxWidth().height(51.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = CDanger)) {
-                Icon(Icons.Default.Logout, null)
-                Spacer(Modifier.width(7.dp))
-                Text("تسجيل الخروج", fontWeight = FontWeight.Bold)
-            }
-        }
+        item { OutlinedButton(onClick = onLogout, Modifier.fillMaxWidth().height(51.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = CDanger)) { Icon(Icons.Default.Logout, null); Spacer(Modifier.width(7.dp)); Text("تسجيل الخروج", fontWeight = FontWeight.Bold) } }
     }
 }
 
 @Composable
-private fun ProfileAction(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = CPrimary, modifier = Modifier.size(21.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, color = CInk, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = CMuted, fontSize = 10.sp)
-            }
-            Icon(Icons.Default.ChevronLeft, null, tint = CMuted)
-        }
-    }
-}
+private fun ProfileAction(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) { Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(icon, null, tint = CPrimary, modifier = Modifier.size(21.dp)) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(title, color = CInk, fontWeight = FontWeight.Bold); Text(subtitle, color = CMuted, fontSize = 10.sp) }; Icon(Icons.Default.ChevronLeft, null, tint = CMuted) } } }
 
 @Composable
-private fun CustomerSubPage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = CInk) }
-            Spacer(Modifier.width(4.dp))
-            Text(title, color = CInk, fontSize = 23.sp, fontWeight = FontWeight.Black)
-        }
-        Spacer(Modifier.height(10.dp))
-        content()
-    }
-}
+private fun CustomerSubPage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) { Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = CInk) }; Spacer(Modifier.width(4.dp)); Text(title, color = CInk, fontSize = 23.sp, fontWeight = FontWeight.Black) }; Spacer(Modifier.height(10.dp)); content() } }
 
 @Composable
-private fun SimpleSettings(onNotifications: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        ProfileAction("الإشعارات", "إدارة تنبيهات الرحلات", Icons.Default.Notifications, onNotifications)
-        ProfileAction("الخصوصية والأمان", "حماية بيانات الحساب", Icons.Default.Shield) { }
-        ProfileAction("اللغة", "العربية", Icons.Default.Person) { }
-    }
-}
+private fun SimpleSettings(onNotifications: () -> Unit) { Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) { ProfileAction("الإشعارات", "إدارة تنبيهات الرحلات", Icons.Default.Notifications, onNotifications); ProfileAction("الخصوصية والأمان", "حماية بيانات الحساب", Icons.Default.Shield) { }; ProfileAction("اللغة", "العربية", Icons.Default.Person) { } } }
 
 @Composable
-private fun NotificationPage() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SettingToggle("تحديثات الرحلة", "تنبيهك عند تغيّر حالة الحجز", true)
-        SettingToggle("العروض", "التنبيهات المتعلقة بالعروض", true)
-    }
-}
+private fun NotificationPage() { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { SettingToggle("تحديثات الرحلة", "تنبيهك عند تغيّر حالة الحجز", true); SettingToggle("العروض", "التنبيهات المتعلقة بالعروض", true) } }
 
 @Composable
-private fun SettingToggle(title: String, subtitle: String, initial: Boolean) {
-    var enabled by remember { mutableStateOf(initial) }
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine)) {
-        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Notifications, null, tint = CPrimary, modifier = Modifier.size(21.dp))
-            }
-            Spacer(Modifier.width(11.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, color = CInk)
-                Text(subtitle, color = CMuted, fontSize = 10.sp)
-            }
-            Switch(checked = enabled, onCheckedChange = { enabled = it })
-        }
-    }
-}
+private fun SettingToggle(title: String, subtitle: String, initial: Boolean) { var enabled by remember { mutableStateOf(initial) }; Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine)) { Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(Icons.Default.Notifications, null, tint = CPrimary, modifier = Modifier.size(21.dp)) }; Spacer(Modifier.width(11.dp)); Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.Bold, color = CInk); Text(subtitle, color = CMuted, fontSize = 10.sp) }; Switch(checked = enabled, onCheckedChange = { enabled = it }) } } }
 
 @Composable
-private fun PaymentPage() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ProfileAction("الدفع نقداً", "الدفع للكابتن بعد انتهاء الرحلة", Icons.Default.CreditCard) { }
-        ProfileAction("محفظة وصلها", "جاهزة لإضافة الرصيد مستقبلاً", Icons.Default.CreditCard) { }
-        Text("الدفع النقدي هو الخيار المتاح حالياً لرحلات التكسي.", color = CMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp))
-    }
-}
+private fun PaymentPage() { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { ProfileAction("الدفع نقداً", "الدفع للكابتن بعد انتهاء الرحلة", Icons.Default.CreditCard) { }; ProfileAction("محفظة وصلها", "جاهزة لإضافة الرصيد مستقبلاً", Icons.Default.CreditCard) { }; Text("الدفع النقدي هو الخيار المتاح حالياً لرحلات التكسي.", color = CMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp)) } }
 
 @Composable
-private fun SavedPlacePage() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ProfileAction("المنزل", "أضف موقع المنزل لاحقاً", Icons.Default.Home) { }
-        ProfileAction("العمل", "أضف موقع العمل لاحقاً", Icons.Default.LocationOn) { }
-        Text("الأماكن محفوظة كواجهة حالياً، وسيتم ربط الحفظ الدائم مع نظام البيانات لاحقاً.", color = CMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp))
-    }
-}
+private fun SavedPlacePage() { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { ProfileAction("المنزل", "أضف موقع المنزل لاحقاً", Icons.Default.Home) { }; ProfileAction("العمل", "أضف موقع العمل لاحقاً", Icons.Default.LocationOn) { }; Text("الأماكن محفوظة كواجهة حالياً، وسيتم ربط الحفظ الدائم مع نظام البيانات لاحقاً.", color = CMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp)) } }
 
 @Composable
-private fun SupportPage() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ProfileAction("كيف أطلب تكسي؟", "اختر موقعك والوجهة ثم اضغط طلب التكسي", Icons.Default.HelpOutline) { }
-        ProfileAction("كيف ألغي الرحلة؟", "من بطاقة الرحلة الحالية", Icons.Default.HelpOutline) { }
-        ProfileAction("مشكلة في الحساب", "راجع الاتصال ثم أعد تسجيل الدخول", Icons.Default.HelpOutline) { }
-    }
-}
+private fun SupportPage() { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { ProfileAction("كيف أطلب تكسي؟", "اختر موقعك والوجهة ثم اضغط طلب التكسي", Icons.Default.HelpOutline) { }; ProfileAction("كيف ألغي الرحلة؟", "من بطاقة الرحلة الحالية", Icons.Default.HelpOutline) { }; ProfileAction("مشكلة في الحساب", "راجع الاتصال ثم أعد تسجيل الدخول", Icons.Default.HelpOutline) { } } }
 
 @Composable
-private fun AboutPage() {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CPrimary), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(52.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(27.dp)) }
-            Text("وصلها", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-            Text("تطبيق تكسي لحجز المشاوير داخل سوريا.", color = Color.White.copy(alpha = .86f), fontSize = 13.sp)
-            Text("النسخة الحالية: 1.3.5", color = Color.White.copy(alpha = .68f), fontSize = 10.sp)
-        }
-    }
-}
+private fun AboutPage() { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CPrimary), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(0.dp)) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Box(Modifier.size(52.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(27.dp)) }; Text("وصلها", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black); Text("تطبيق تكسي لحجز المشاوير داخل سوريا.", color = Color.White.copy(alpha = .86f), fontSize = 13.sp); Text("النسخة الحالية: 1.3.5", color = Color.White.copy(alpha = .68f), fontSize = 10.sp) } } }
 
 @Composable
-private fun EditProfilePage(sessionStore: SessionStore, onSaved: () -> Unit) {
-    var name by remember { mutableStateOf(sessionStore.name.orEmpty()) }
-    var phone by remember { mutableStateOf(sessionStore.phone.orEmpty()) }
-    var email by remember { mutableStateOf(sessionStore.email.orEmpty()) }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("الاسم") }, singleLine = true, shape = RoundedCornerShape(16.dp))
-        OutlinedTextField(phone, { phone = it }, Modifier.fillMaxWidth(), label = { Text("رقم الهاتف") }, singleLine = true, shape = RoundedCornerShape(16.dp))
-        OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("البريد الإلكتروني") }, singleLine = true, shape = RoundedCornerShape(16.dp))
-        Button(onClick = { sessionStore.updateProfile(name.trim(), phone.trim(), email.trim()); onSaved() }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = CPrimary)) {
-            Text("حفظ التغييرات", fontWeight = FontWeight.Black)
-        }
-    }
-}
+private fun EditProfilePage(sessionStore: SessionStore, onSaved: () -> Unit) { var name by remember { mutableStateOf(sessionStore.name.orEmpty()) }; var phone by remember { mutableStateOf(sessionStore.phone.orEmpty()) }; var email by remember { mutableStateOf(sessionStore.email.orEmpty()) }; Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("الاسم") }, singleLine = true, shape = RoundedCornerShape(16.dp)); OutlinedTextField(phone, { phone = it }, Modifier.fillMaxWidth(), label = { Text("رقم الهاتف") }, singleLine = true, shape = RoundedCornerShape(16.dp)); OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("البريد الإلكتروني") }, singleLine = true, shape = RoundedCornerShape(16.dp)); Button(onClick = { sessionStore.updateProfile(name.trim(), phone.trim(), email.trim()); onSaved() }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = CPrimary)) { Text("حفظ التغييرات", fontWeight = FontWeight.Black) } } }
 
 @Composable
-private fun MapDestinationPage(pickup: Coordinates, selected: Coordinates?, onBack: () -> Unit, onPicked: (Coordinates) -> Unit) {
-    Box(Modifier.fillMaxSize().background(Color.White)) {
-        WaslhaRideMap(pickup = pickup, destination = selected, modifier = Modifier.fillMaxSize(), onDestinationPicked = onPicked)
-        Card(Modifier.align(Alignment.TopStart).padding(14.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = CInk) }
-        }
-        Card(Modifier.align(Alignment.BottomCenter).padding(16.dp), colors = CardDefaults.cardColors(CWhite.copy(alpha = .98f)), shape = RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(6.dp)) {
-            Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(CPrimary)) {}
-                Spacer(Modifier.height(7.dp))
-                Text("حدد وجهتك على الخريطة", color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                Text("حرّك الخريطة حتى يكون المؤشر على المكان المطلوب", color = CMuted, fontSize = 10.sp)
-            }
-        }
-    }
-}
+private fun MapDestinationPage(pickup: Coordinates, selected: Coordinates?, onBack: () -> Unit, onPicked: (Coordinates) -> Unit) { Box(Modifier.fillMaxSize().background(Color.White)) { WaslhaRideMap(pickup = pickup, destination = selected, modifier = Modifier.fillMaxSize(), onDestinationPicked = onPicked); Card(Modifier.align(Alignment.TopStart).padding(14.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = CInk) } }; Card(Modifier.align(Alignment.BottomCenter).padding(16.dp), colors = CardDefaults.cardColors(CWhite.copy(alpha = .98f)), shape = RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(6.dp)) { Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) { Box(Modifier.size(8.dp).clip(CircleShape).background(CPrimary)) {}; Spacer(Modifier.height(7.dp)); Text("حدد وجهتك على الخريطة", color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp); Text("حرّك الخريطة حتى يكون المؤشر على المكان المطلوب", color = CMuted, fontSize = 10.sp) } } } }
 
 @Composable
 private fun ActiveTripCardOverlay(trip: Trip, onOpen: () -> Unit, onCancel: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(12.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(10.dp), border = BorderStroke(1.dp, CLine)) {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(43.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = CPrimary) }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(trip.statusLabel(), color = CInk, fontWeight = FontWeight.Black)
-                Text("${trip.distanceKm} كم • ${trip.estimatedFare} ${trip.currency}", color = CMuted, fontSize = 10.sp)
+    val statusColor = when (trip.status) { "completed" -> CPrimary; "cancelled" -> CDanger; else -> CPurple }
+    val statusHint = when (trip.status) { "searching" -> "نبحث عن أقرب كابتن"; "driver_assigned" -> "تم العثور على كابتن"; "arriving" -> "الكابتن متجه إليك"; "completed" -> "اكتملت الرحلة"; "cancelled" -> "تم إلغاء الرحلة"; else -> "تحديث مباشر لحالة الرحلة" }
+    Card(Modifier.fillMaxWidth().padding(12.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(23.dp), elevation = CardDefaults.cardElevation(10.dp), border = BorderStroke(1.dp, CLine)) {
+        Column(Modifier.padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(46.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = CPrimary, modifier = Modifier.size(24.dp)) }
+                Spacer(Modifier.width(11.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(trip.statusLabel(), color = statusColor, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    Text(statusHint, color = CMuted, fontSize = 10.sp)
+                }
+                Text("${trip.estimatedFare} ${trip.currency}", color = CInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
             }
-            TextButton(onClick = onOpen) { Text("فتح", color = CPrimary, fontWeight = FontWeight.Bold) }
-            if (trip.status == "searching" || trip.status == "driver_assigned" || trip.status == "arriving") TextButton(onClick = onCancel) { Text("إلغاء", color = CDanger, fontWeight = FontWeight.Bold) }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth().background(CSoft2, RoundedCornerShape(14.dp)).padding(horizontal = 11.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${trip.distanceKm} كم", color = CMuted, fontSize = 10.sp)
+                Text("${trip.durationMin} دقيقة", color = CMuted, fontSize = 10.sp)
+                Text(trip.vehicleType, color = CPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(9.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onOpen) { Text("تفاصيل الرحلة", color = CPrimary, fontWeight = FontWeight.Bold) }
+                if (trip.status == "searching" || trip.status == "driver_assigned" || trip.status == "arriving") TextButton(onClick = onCancel) { Text("إلغاء", color = CDanger, fontWeight = FontWeight.Bold) }
+            }
         }
     }
 }
