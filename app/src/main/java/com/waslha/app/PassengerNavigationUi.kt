@@ -1,5 +1,7 @@
 package com.waslha.app
 
+import android.content.Intent
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,14 +16,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +50,10 @@ private val NavMuted = Color(0xFF72807B)
 private val NavSoft = Color(0xFFE8F6F0)
 private val NavBg = Color(0xFFF4F7F5)
 private val NavDanger = Color(0xFFB42318)
+
+private fun launchFeature(context: Context, screen: String) {
+    context.startActivity(Intent(context, FeatureHostActivity::class.java).putExtra("screen", screen))
+}
 
 @Composable
 fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
@@ -84,9 +92,10 @@ private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var locationEnabled by remember { mutableStateOf(true) }
-    var openDialog by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("waslha_preferences", Context.MODE_PRIVATE) }
+    var notificationsEnabled by remember { mutableStateOf(prefs.getBoolean("notifications", true)) }
+    var locationEnabled by remember { mutableStateOf(prefs.getBoolean("location", true)) }
 
     Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -94,39 +103,45 @@ fun SettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Text("الإعدادات", fontSize = 26.sp, fontWeight = FontWeight.Black, color = NavInk)
         }
+
+        SettingsGroup("تفضيلات التطبيق") {
+            SettingToggleRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notificationsEnabled) {
+                notificationsEnabled = it
+                prefs.edit().putBoolean("notifications", it).apply()
+            }
+            SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.LocationOn, locationEnabled) {
+                locationEnabled = it
+                prefs.edit().putBoolean("location", it).apply()
+            }
+        }
+
+        SettingsGroup("الحساب والحماية") {
+            SettingActionRow("الخصوصية والأمان", "حماية الحساب وصلاحيات التطبيق", Icons.Default.Security) { launchFeature(context, "security") }
+            SettingActionRow("حماية تسجيل الدخول", "معلومات الجلسة وطرق الحماية", Icons.Default.AccountCircle) { launchFeature(context, "security") }
+        }
+
+        SettingsGroup("الخدمات") {
+            SettingActionRow("الأماكن المحفوظة", "المنزل والعمل والمفضلة", Icons.Default.LocationOn) { launchFeature(context, "places") }
+            SettingActionRow("طرق الدفع", "اختيار طريقة الدفع", Icons.Default.CreditCard) { launchFeature(context, "payments") }
+            SettingActionRow("الإشعارات", "عرض آخر التنبيهات", Icons.Default.Notifications) { launchFeature(context, "notifications") }
+            SettingActionRow("المساعدة والدعم", "الأسئلة والحلول", Icons.Default.HelpOutline) { launchFeature(context, "support") }
+            SettingActionRow("عن وصلها", "معلومات التطبيق", Icons.Default.Info) { launchFeature(context, "about") }
+        }
+    }
+}
+
+@Composable
+private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Text(title, color = NavMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 5.dp))
         Card(
-            Modifier.fillMaxWidth().padding(top = 14.dp),
+            Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(Color.White),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            Column(Modifier.padding(vertical = 6.dp)) {
-                SettingToggleRow("الإشعارات", "تنبيهات الرحلات والعروض", Icons.Default.Notifications, notificationsEnabled) { notificationsEnabled = it }
-                SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.Home, locationEnabled) { locationEnabled = it }
-                SettingActionRow("الخصوصية والأمان", "خيارات حماية الحساب", Icons.Default.Security) { openDialog = "privacy" }
-                SettingActionRow("قفل الحساب", "معلومات الحماية وتسجيل الدخول", Icons.Default.Lock) { openDialog = "lock" }
-                SettingActionRow("عن وصلها", "الإصدار ومعلومات التطبيق", Icons.Default.Info) { openDialog = "about" }
-            }
+            Column(Modifier.padding(vertical = 5.dp)) { content() }
         }
-    }
-
-    openDialog?.let { dialog ->
-        val title = when (dialog) {
-            "privacy" -> "الخصوصية والأمان"
-            "lock" -> "حماية الحساب"
-            else -> "عن وصلها"
-        }
-        val body = when (dialog) {
-            "privacy" -> "يستخدم التطبيق صلاحية الموقع عند الحاجة إلى تحديد نقطة الانطلاق."
-            "lock" -> "يمكن إنهاء جلسة الدخول من صفحة الحساب."
-            else -> "وصلها — تطبيق تاكسي للركاب."
-        }
-        AlertDialog(
-            onDismissRequest = { openDialog = null },
-            title = { Text(title, fontWeight = FontWeight.Black, color = NavInk) },
-            text = { Text(body, color = NavMuted) },
-            confirmButton = { TextButton(onClick = { openDialog = null }) { Text("حسنًا", color = NavGreen, fontWeight = FontWeight.Bold) } }
-        )
     }
 }
 
@@ -159,15 +174,22 @@ private fun SettingActionRow(title: String, subtitle: String, icon: androidx.com
 
 @Composable
 fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> Unit, onLogout: () -> Unit) {
+    val context = LocalContext.current
     Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Text("حسابي", fontSize = 30.sp, fontWeight = FontWeight.Black, color = NavInk)
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
-        Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+        Card(
+            Modifier.fillMaxWidth().padding(top = 16.dp),
+            colors = CardDefaults.cardColors(Color.White),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.size(46.dp))
-                Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 19.sp)
+                Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.size(52.dp))
+                Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 20.sp)
                 Text(sessionStore.email ?: sessionStore.phone ?: "بيانات التواصل غير متاحة", color = NavMuted, fontSize = 11.sp)
                 Text("معرّف المستخدم: ${sessionStore.userId ?: "—"}", color = NavMuted, fontSize = 10.sp)
+                TextButton(onClick = { launchFeature(context, "account") }) { Text("تعديل الحساب", color = NavGreen, fontWeight = FontWeight.Bold) }
                 TextButton(onClick = onSettings) { Text("الإعدادات", color = NavGreen, fontWeight = FontWeight.Bold) }
                 TextButton(onClick = onLogout) { Text("تسجيل الخروج", color = NavDanger, fontWeight = FontWeight.Bold) }
             }
