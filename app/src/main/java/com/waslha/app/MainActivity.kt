@@ -17,7 +17,8 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        startActivity(Intent(this, TaxiBookingActivity::class.java))
+        val target = if (!sessionStore.activeTripId.isNullOrBlank()) TripResumeActivity::class.java else TaxiBookingActivity::class.java
+        startActivity(Intent(this, target))
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         finish()
     }
