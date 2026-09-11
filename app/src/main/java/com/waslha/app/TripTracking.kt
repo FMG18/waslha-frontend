@@ -5,7 +5,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 data class DriverLocation(
     val lat: Double,
@@ -31,14 +35,12 @@ fun startTripTracking(
         runCatching { repository.get(tripId).getOrThrow() }
             .onSuccess { trip ->
                 val driver = trip.driver
-                val lat = driver?.lat
-                val lng = driver?.lng
-                val eta = trip.etaMinutes
-                val distance = trip.distanceToPickupKm
+                val location = driver?.let { DriverLocation(it.lat, it.lng) }
+                val distance = location?.let { haversineKm(it, trip.pickup) }
                 onUpdate(
                     TripTrackingSnapshot(
-                        driverLocation = if (lat != null && lng != null) DriverLocation(lat, lng) else null,
-                        etaMinutes = eta,
+                        driverLocation = location,
+                        etaMinutes = estimateEtaMinutes(distance),
                         distanceToPickupKm = distance
                     )
                 )
@@ -46,6 +48,17 @@ fun startTripTracking(
             .onFailure { error -> onError(error.message ?: "تعذر تحديث موقع الكابتن") }
         delay(5000)
     }
+}
+
+private fun haversineKm(from: DriverLocation, to: Coordinates): Double {
+    val radiusKm = 6371.0
+    val lat1 = Math.toRadians(from.lat)
+    val lat2 = Math.toRadians(to.lat)
+    val dLat = Math.toRadians(to.lat - from.lat)
+    val dLng = Math.toRadians(to.lng - from.lng)
+    val h = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2)
+    return radiusKm * 2 * atan2(sqrt(h), sqrt(1 - h))
 }
 
 fun estimateEtaMinutes(distanceKm: Double?): Int? {
