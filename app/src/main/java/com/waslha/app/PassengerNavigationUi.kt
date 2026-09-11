@@ -2,6 +2,10 @@ package com.waslha.app
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +64,7 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
         modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         colors = CardDefaults.cardColors(Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NavLine),
+        border = BorderStroke(1.dp, NavLine),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -77,14 +81,30 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
 
 @Composable
 private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onTab: (Int) -> Unit) {
+    val background by animateColorAsState(
+        targetValue = if (selected) NavSoft else Color.Transparent,
+        animationSpec = tween(180),
+        label = "navBackground"
+    )
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (selected) 20.dp else 17.dp,
+        animationSpec = tween(180),
+        label = "navPadding"
+    )
+    val iconSize by animateDpAsState(
+        targetValue = if (selected) 23.dp else 21.dp,
+        animationSpec = tween(180),
+        label = "navIcon"
+    )
+
     Column(
         modifier = Modifier
             .clickable { onTab(index) }
-            .background(if (selected) NavSoft else Color.Transparent, RoundedCornerShape(18.dp))
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .background(background, RoundedCornerShape(18.dp))
+            .padding(horizontal = horizontalPadding, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, null, tint = if (selected) NavGreen else NavMuted, modifier = Modifier.size(22.dp))
+        Icon(icon, null, tint = if (selected) NavGreen else NavMuted, modifier = Modifier.size(iconSize))
         Spacer(Modifier.size(3.dp))
         Text(label, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Medium, color = if (selected) NavInk else NavMuted)
     }
@@ -138,7 +158,7 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
             Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(Color.White),
             shape = RoundedCornerShape(21.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, NavLine),
+            border = BorderStroke(1.dp, NavLine),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Column(Modifier.padding(vertical = 4.dp)) { content() }
@@ -180,7 +200,7 @@ fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> U
     Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Text("حسابي", fontSize = 29.sp, fontWeight = FontWeight.Black, color = NavInk)
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
-        Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), border = androidx.compose.foundation.BorderStroke(1.dp, NavLine), elevation = CardDefaults.cardElevation(0.dp)) {
+        Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), border = BorderStroke(1.dp, NavLine), elevation = CardDefaults.cardElevation(0.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(18.dp)) { Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.padding(11.dp).size(37.dp)) }
                 Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 20.sp)
