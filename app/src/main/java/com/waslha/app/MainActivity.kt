@@ -12,11 +12,13 @@ class MainActivity : ComponentActivity() {
         val sessionStore = SessionStore(this)
         if (!sessionStore.isSignedIn) {
             startActivity(Intent(this, AuthActivity::class.java))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()
             return
         }
 
         startActivity(Intent(this, TaxiBookingActivity::class.java))
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         finish()
     }
 }
