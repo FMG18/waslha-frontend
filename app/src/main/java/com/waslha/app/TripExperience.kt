@@ -1,9 +1,6 @@
 package com.waslha.app
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -80,7 +77,7 @@ fun TripSafetyPanel(onShare: () -> Unit, onEmergency: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             SafetyAction("مشاركة الرحلة", "شارك تفاصيل الرحلة مع شخص تثق به", Icons.Default.LocationOn, onShare)
-            SafetyAction("مركز الأمان", "إرشادات وأدوات السلامة", Icons.Default.Security) { showSafety = true }
+            SafetyAction("مركز الأمان", "إرشادات وأدوات السلامة", Icons.Default.Security, onClick = { showSafety = true })
             SafetyAction("مساعدة عاجلة", "للحالات التي تحتاج تدخلاً سريعاً", Icons.Default.Warning, onEmergency, danger = true)
         }
     }
@@ -193,13 +190,7 @@ enum class TripStatus { REQUESTING, ASSIGNED, ARRIVING, PICKED_UP, COMPLETED }
 
 @Composable
 fun DriverContactCard(onCall: () -> Unit, onClose: () -> Unit) {
-    val transition = rememberInfiniteTransition(label = "driverOnline")
-    val dotAlpha by transition.animateColor(
-        initialValue = Color(0xFF087F5B),
-        targetValue = Color(0xFF7DBFA8),
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "driverDot"
-    )
+    val dotColor = TripGreen
     Card(
         colors = CardDefaults.cardColors(Color.White),
         shape = RoundedCornerShape(23.dp),
@@ -217,7 +208,7 @@ fun DriverContactCard(onCall: () -> Unit, onClose: () -> Unit) {
                     Text("الكابتن", fontWeight = FontWeight.Black, color = TripInk, fontSize = 16.sp)
                     Text("معلومات الكابتن والسيارة تظهر هنا", color = TripMuted, fontSize = 10.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(dotAlpha))
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor))
                         Spacer(Modifier.size(5.dp))
                         Text("متصل", color = TripGreen, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                     }
