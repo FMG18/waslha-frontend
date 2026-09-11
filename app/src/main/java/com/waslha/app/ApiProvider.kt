@@ -26,6 +26,7 @@ private class AuthInterceptor(private val sessionStore: SessionStore) : Intercep
 
 object ApiProvider {
     private lateinit var apiInstance: WaslhaApi
+    private lateinit var appContext: Context
     private var initialized = false
 
     val api: WaslhaApi
@@ -34,10 +35,20 @@ object ApiProvider {
             return apiInstance
         }
 
+    val context: Context
+        get() {
+            check(initialized) { "ApiProvider.init(context) must be called before ApiProvider.context" }
+            return appContext
+        }
+
+    val session: SessionStore
+        get() = SessionStore(context)
+
     fun init(context: Context) {
         if (initialized) return
+        appContext = context.applicationContext
 
-        val sessionStore = SessionStore(context.applicationContext)
+        val sessionStore = SessionStore(appContext)
         val logger = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
