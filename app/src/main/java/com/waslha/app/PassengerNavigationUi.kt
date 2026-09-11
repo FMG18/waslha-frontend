@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -68,7 +67,7 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -81,35 +80,17 @@ fun PassengerBottomBar(selectedTab: Int, onTab: (Int) -> Unit) {
 
 @Composable
 private fun NavItem(index: Int, selected: Boolean, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onTab: (Int) -> Unit) {
-    val background by animateColorAsState(
-        targetValue = if (selected) NavSoft else Color.Transparent,
-        animationSpec = tween(180),
-        label = "navBackground"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (selected) NavGreen else NavMuted,
-        animationSpec = tween(180),
-        label = "navIconTint"
-    )
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (selected) 20.dp else 17.dp,
-        animationSpec = tween(180),
-        label = "navPadding"
-    )
-    val iconSize by animateDpAsState(
-        targetValue = if (selected) 23.dp else 21.dp,
-        animationSpec = tween(180),
-        label = "navIconSize"
-    )
-
+    val container by animateColorAsState(if (selected) NavSoft else Color.Transparent, tween(180), label = "navContainer")
+    val iconTint by animateColorAsState(if (selected) NavGreen else NavMuted, tween(180), label = "navIconTint")
+    val horizontalPadding by animateDpAsState(if (selected) 20.dp else 16.dp, tween(180), label = "navPadding")
+    val iconSize by animateDpAsState(if (selected) 24.dp else 21.dp, tween(180), label = "navIconSize")
     Column(
-        modifier = Modifier
-            .clickable { onTab(index) }
-            .background(background, RoundedCornerShape(18.dp))
-            .padding(horizontal = horizontalPadding, vertical = 8.dp),
+        modifier = Modifier.clickable { onTab(index) }.background(container, RoundedCornerShape(18.dp)).padding(horizontal = horizontalPadding, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, null, tint = iconTint, modifier = Modifier.size(iconSize))
+        Card(colors = CardDefaults.cardColors(if (selected) Color.White else Color.Transparent), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+            Icon(icon, null, tint = iconTint, modifier = Modifier.padding(if (selected) 6.dp else 5.dp).size(iconSize))
+        }
         Spacer(Modifier.size(3.dp))
         Text(label, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Medium, color = if (selected) NavInk else NavMuted)
     }
@@ -121,7 +102,6 @@ fun SettingsScreen(onBack: () -> Unit) {
     val prefs = remember { context.getSharedPreferences("waslha_preferences", Context.MODE_PRIVATE) }
     var notificationsEnabled by remember { mutableStateOf(prefs.getBoolean("notifications", true)) }
     var locationEnabled by remember { mutableStateOf(prefs.getBoolean("location", true)) }
-
     Column(Modifier.fillMaxWidth().background(NavBg).padding(18.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("رجوع", color = NavGreen, fontWeight = FontWeight.Bold) }
@@ -129,16 +109,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Text("الإعدادات", fontSize = 25.sp, fontWeight = FontWeight.Black, color = NavInk)
         }
         Text("خصّص تجربة وصلها على طريقتك", color = NavMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp))
-
         SettingsGroup("تفضيلات التطبيق") {
-            SettingToggleRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notificationsEnabled) {
-                notificationsEnabled = it
-                prefs.edit().putBoolean("notifications", it).apply()
-            }
-            SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.LocationOn, locationEnabled) {
-                locationEnabled = it
-                prefs.edit().putBoolean("location", it).apply()
-            }
+            SettingToggleRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notificationsEnabled) { notificationsEnabled = it; prefs.edit().putBoolean("notifications", it).apply() }
+            SettingToggleRow("الموقع أثناء الحجز", "استخدام الموقع لتحديد نقطة الانطلاق", Icons.Default.LocationOn, locationEnabled) { locationEnabled = it; prefs.edit().putBoolean("location", it).apply() }
         }
         SettingsGroup("الحساب والحماية") {
             SettingActionRow("الخصوصية والأمان", "حماية الحساب وصلاحيات التطبيق", Icons.Default.Security) { launchFeature(context, "security") }
@@ -158,26 +131,17 @@ fun SettingsScreen(onBack: () -> Unit) {
 private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
         Text(title, color = NavMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp))
-        Card(
-            Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(Color.White),
-            shape = RoundedCornerShape(21.dp),
-            border = BorderStroke(1.dp, NavLine),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) { Column(Modifier.padding(vertical = 4.dp)) { content() } }
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(21.dp), border = BorderStroke(1.dp, NavLine), elevation = CardDefaults.cardElevation(0.dp)) {
+            Column(Modifier.padding(vertical = 4.dp)) { content() }
+        }
     }
 }
 
 @Composable
 private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-            Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp))
-        }
-        Column(Modifier.weight(1f).padding(start = 11.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = NavInk)
-            Text(subtitle, fontSize = 10.sp, color = NavMuted)
-        }
+        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
+        Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
@@ -185,13 +149,8 @@ private fun SettingToggleRow(title: String, subtitle: String, icon: androidx.com
 @Composable
 private fun SettingActionRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-            Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp))
-        }
-        Column(Modifier.weight(1f).padding(start = 11.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = NavInk)
-            Text(subtitle, fontSize = 10.sp, color = NavMuted)
-        }
+        Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(13.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(icon, null, tint = NavGreen, modifier = Modifier.padding(9.dp).size(21.dp)) }
+        Column(Modifier.weight(1f).padding(start = 11.dp)) { Text(title, fontWeight = FontWeight.Bold, color = NavInk); Text(subtitle, fontSize = 10.sp, color = NavMuted) }
         Text("‹", color = NavMuted, fontSize = 24.sp)
     }
 }
@@ -204,9 +163,7 @@ fun PassengerLegacyProfileScreen(sessionStore: SessionStore, onSettings: () -> U
         Text("إدارة معلومات حسابك", color = NavMuted, fontSize = 12.sp)
         Card(Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(23.dp), border = BorderStroke(1.dp, NavLine), elevation = CardDefaults.cardElevation(0.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-                    Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.padding(11.dp).size(37.dp))
-                }
+                Card(colors = CardDefaults.cardColors(NavSoft), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(0.dp)) { Icon(Icons.Default.AccountCircle, null, tint = NavGreen, modifier = Modifier.padding(11.dp).size(37.dp)) }
                 Text(sessionStore.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontWeight = FontWeight.Black, color = NavInk, fontSize = 20.sp)
                 Text(sessionStore.email ?: sessionStore.phone ?: "بيانات التواصل غير متاحة", color = NavMuted, fontSize = 11.sp)
                 TextButton(onClick = { launchFeature(context, "account") }) { Text("تعديل الحساب", color = NavGreen, fontWeight = FontWeight.Bold) }
