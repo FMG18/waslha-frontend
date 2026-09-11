@@ -55,6 +55,127 @@ private val TripLine = Color(0xFFDDE5E1)
 private val TripDanger = Color(0xFFB42318)
 
 @Composable
+fun TripLiveStatusCard(
+    status: TripStatus,
+    etaMinutes: Int? = null,
+    plate: String? = null,
+    vehicle: String? = null
+) {
+    val title = when (status) {
+        TripStatus.REQUESTING -> "جاري البحث عن كابتن"
+        TripStatus.ASSIGNED -> "تم العثور على كابتن"
+        TripStatus.ARRIVING -> "الكابتن في طريقه إليك"
+        TripStatus.PICKED_UP -> "الرحلة جارية"
+        TripStatus.COMPLETED -> "اكتملت الرحلة"
+    }
+    val subtitle = when (status) {
+        TripStatus.REQUESTING -> "نبحث عن أقرب كابتن متاح لك"
+        TripStatus.ASSIGNED, TripStatus.ARRIVING -> etaMinutes?.let { "الوصول المتوقع خلال $it دقيقة" } ?: "نحدّث وقت الوصول باستمرار"
+        TripStatus.PICKED_UP -> "نتابع مسارك حتى الوصول إلى الوجهة"
+        TripStatus.COMPLETED -> "شكراً لاستخدامك وصلها"
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(Color.White),
+        border = BorderStroke(1.dp, TripLine),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(48.dp).clip(CircleShape).background(TripSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.DirectionsCar, null, tint = TripGreen, modifier = Modifier.size(25.dp))
+                }
+                Spacer(Modifier.size(11.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = TripInk, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    Text(subtitle, color = TripMuted, fontSize = 10.sp)
+                }
+                if (etaMinutes != null && (status == TripStatus.ASSIGNED || status == TripStatus.ARRIVING)) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("ETA", color = TripMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("$etaMinutes د", color = TripGreen, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+            if (plate != null || vehicle != null) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(TripSurface).padding(11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.DirectionsCar, null, tint = TripGreen, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(vehicle ?: "السيارة", color = TripInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        plate?.let { Text("رقم اللوحة: $it", color = TripMuted, fontSize = 9.sp) }
+                    }
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(TripGreen))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TripRouteSummary(
+    pickup: String,
+    destination: String,
+    distanceKm: Double? = null,
+    durationMin: Int? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(Color.White),
+        border = BorderStroke(1.dp, TripLine),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            RouteLineItem("الانطلاق", pickup, Icons.Default.MyLocation)
+            Box(
+                Modifier.padding(start = 10.dp).size(2.dp, 14.dp).clip(RoundedCornerShape(1.dp)).background(TripLine)
+            )
+            RouteLineItem("الوجهة", destination, Icons.Default.LocationOn, destinationColor = Color(0xFFD93838))
+            if (distanceKm != null || durationMin != null) {
+                Row(Modifier.fillMaxWidth().padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (distanceKm != null) MetricChip("${distanceKm} كم")
+                    if (durationMin != null) MetricChip("${durationMin} دقيقة")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RouteLineItem(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    destinationColor: Color = TripGreen
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(34.dp).clip(CircleShape).background(if (destinationColor == TripGreen) TripSoft else Color(0xFFFFEFEC)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = destinationColor, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.size(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = TripMuted, fontSize = 9.sp)
+            Text(value, color = TripInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun MetricChip(value: String) {
+    Box(Modifier.clip(RoundedCornerShape(10.dp)).background(TripSoft).padding(horizontal = 9.dp, vertical = 6.dp)) {
+        Text(value, color = TripGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 fun TripSafetyPanel(onShare: () -> Unit, onEmergency: () -> Unit) {
     var showSafety by remember { mutableStateOf(false) }
     Card(
@@ -190,7 +311,6 @@ enum class TripStatus { REQUESTING, ASSIGNED, ARRIVING, PICKED_UP, COMPLETED }
 
 @Composable
 fun DriverContactCard(onCall: () -> Unit, onClose: () -> Unit) {
-    val dotColor = TripGreen
     Card(
         colors = CardDefaults.cardColors(Color.White),
         shape = RoundedCornerShape(23.dp),
@@ -208,7 +328,7 @@ fun DriverContactCard(onCall: () -> Unit, onClose: () -> Unit) {
                     Text("الكابتن", fontWeight = FontWeight.Black, color = TripInk, fontSize = 16.sp)
                     Text("معلومات الكابتن والسيارة تظهر هنا", color = TripMuted, fontSize = 10.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor))
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(TripGreen))
                         Spacer(Modifier.size(5.dp))
                         Text("متصل", color = TripGreen, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                     }
