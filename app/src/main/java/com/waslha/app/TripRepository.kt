@@ -1,16 +1,20 @@
 package com.waslha.app
 
 class TripRepository(private val api: WaslhaApi) {
+    private val session get() = ApiProvider.session
+
     suspend fun create(request: TripRequest): Result<Trip> = runCatching {
         val response = api.createTrip(request)
         require(response.success && response.data != null) { response.message ?: "تعذر إنشاء الرحلة" }
-        response.data
+        response.data.also { session.setActiveTrip(it.id) }
     }
 
     suspend fun get(id: String): Result<Trip> = runCatching {
         val response = api.trip(id)
         require(response.success && response.data != null) { response.message ?: "تعذر جلب الرحلة" }
-        response.data
+        response.data.also { trip ->
+            if (trip.status == "completed" || trip.status == "cancelled") session.clearActiveTrip()
+        }
     }
 
     suspend fun track(id: String): Result<TripTrackingDto> = runCatching {
@@ -35,13 +39,13 @@ class TripRepository(private val api: WaslhaApi) {
     suspend fun updateStatus(id: String, status: String): Result<Trip> = runCatching {
         val response = api.updateTripStatus(id, TripStatusRequest(status))
         require(response.success && response.data != null) { response.message ?: "تعذر تحديث حالة الرحلة" }
-        response.data
+        response.data.also { if (it.status == "completed" || it.status == "cancelled") session.clearActiveTrip() }
     }
 
     suspend fun cancel(id: String, reason: String): Result<Trip> = runCatching {
         val response = api.cancelTrip(id, CancelTripRequest(reason))
         require(response.success && response.data != null) { response.message ?: "تعذر إلغاء الرحلة" }
-        response.data
+        response.data.also { session.clearActiveTrip() }
     }
 }
 
