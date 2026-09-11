@@ -62,11 +62,12 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Patch passenger Kotlin compatibility
+      - name: Patch passenger Kotlin compatibility and normalize customer entry paths
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           taxi = Path('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt')
           s = taxi.read_text(encoding='utf-8')
           s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
@@ -85,7 +86,27 @@ jobs:
           s = pf.read_text(encoding='utf-8')
           s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
           pf.write_text(s, encoding='utf-8')
+
+          customer = Path('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt')
+          s = customer.read_text(encoding='utf-8')
+          old_about = 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }'
+          new_about = 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'
+          s = s.replace(old_about, new_about)
+          old_session = 'val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)'
+          new_session = 'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'
+          s = s.replace(old_session, new_session)
+          s = s.replace('"1.4.5"', 'BuildConfig.VERSION_NAME')
+          s = s.replace('"v1.4.5"', '"v${BuildConfig.VERSION_NAME}"')
+          customer.write_text(s, encoding='utf-8')
           PY
+
+      - name: Verify customer app has no legacy version literal
+        shell: bash
+        run: |
+          ! grep -R --fixed-strings '1.4.5' app/src/main/java/com/waslha/app || {
+            echo 'Legacy version 1.4.5 still exists in customer sources'
+            exit 1
+          }
 
       - name: Build signed release APK
         run: |
