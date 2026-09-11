@@ -2,6 +2,7 @@ package com.waslha.app
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -47,17 +50,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val AccountGreen = Color(0xFF078A60)
-private val AccountInk = Color(0xFF10201B)
-private val AccountMuted = Color(0xFF6D7B76)
-private val AccountBg = Color(0xFFF3F7F5)
-private val AccountSoft = Color(0xFFE8F6F0)
+private val AccountGreen = Color(0xFF087F5B)
+private val AccountGreenDark = Color(0xFF055C42)
+private val AccountInk = Color(0xFF12201B)
+private val AccountMuted = Color(0xFF6D7A75)
+private val AccountBg = Color(0xFFF7F9F8)
+private val AccountSoft = Color(0xFFE7F6F0)
+private val AccountLine = Color(0xFFDDE5E1)
 private val AccountDanger = Color(0xFFB42318)
 
 private fun openFeature(context: Context, screen: String) {
@@ -66,7 +71,7 @@ private fun openFeature(context: Context, screen: String) {
 
 @Composable
 fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var editing by rememberSaveable { mutableStateOf(false) }
     var saved by rememberSaveable { mutableStateOf(false) }
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
@@ -81,33 +86,44 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
         AccountHeader("حسابي", onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 Card(
                     Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = AccountGreen),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    shape = RoundedCornerShape(28.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
-                    Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(64.dp).background(Color.White.copy(alpha = .18f), androidx.compose.foundation.shape.CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(initial, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                        }
-                        Spacer(Modifier.size(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(displayName, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                            Text(contact, color = Color.White.copy(alpha = .88f), fontSize = 11.sp)
-                            if (saved) {
-                                Text("تم حفظ التغييرات", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Column(Modifier.padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(66.dp).clip(CircleShape).background(AccountGreenDark),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(initial, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                            }
+                            Spacer(Modifier.size(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(displayName, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                                Text(contact, color = Color.White.copy(alpha = .78f), fontSize = 11.sp)
+                            }
+                            TextButton(onClick = { editing = true }) {
+                                Icon(Icons.Default.Edit, "تعديل", tint = Color.White, modifier = Modifier.size(20.dp))
                             }
                         }
-                        TextButton(onClick = { editing = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "تعديل", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .10f))
+                        ) {
+                            Text(
+                                if (saved) "تم حفظ التغييرات بنجاح" else "إدارة بياناتك وتفضيلاتك من مكان واحد",
+                                color = Color.White.copy(alpha = .88f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
+                            )
                         }
                     }
                 }
@@ -127,10 +143,12 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
                 Button(
                     onClick = { confirmLogout = true },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = AccountDanger)
+                    shape = RoundedCornerShape(17.dp),
+                    border = BorderStroke(1.dp, AccountLine),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = AccountDanger),
+                    elevation = ButtonDefaults.buttonElevation(0.dp)
                 ) {
-                    Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Icon(Icons.Default.Logout, null, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.size(8.dp))
                     Text("تسجيل الخروج", fontWeight = FontWeight.Black)
                 }
@@ -163,7 +181,7 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
 
 @Composable
 fun SettingsCenterScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("waslha_preferences", Context.MODE_PRIVATE) }
     var notifications by rememberSaveable { mutableStateOf(prefs.getBoolean("notifications", true)) }
     var location by rememberSaveable { mutableStateOf(prefs.getBoolean("location", true)) }
@@ -173,9 +191,29 @@ fun SettingsCenterScreen(onBack: () -> Unit) {
         AccountHeader("الإعدادات", onBack)
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = AccountSoft),
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, AccountLine),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Settings, null, tint = AccountGreen, modifier = Modifier.size(22.dp))
+                        }
+                        Spacer(Modifier.size(11.dp))
+                        Column {
+                            Text("تجربة وصلها", color = AccountInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                            Text("خصّص التنبيهات والموقع بما يناسبك", color = AccountMuted, fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
             item { AccountSectionTitle("تفضيلات التطبيق") }
             item {
                 SettingToggle("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notifications) {
@@ -227,7 +265,7 @@ fun SettingsCenterScreen(onBack: () -> Unit) {
 @Composable
 private fun AccountHeader(title: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextButton(onClick = onBack) { Text("رجوع", color = AccountGreen, fontWeight = FontWeight.Bold) }
@@ -242,9 +280,9 @@ private fun AccountSectionTitle(text: String) {
     Text(
         text,
         color = AccountMuted,
-        fontSize = 12.sp,
+        fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp)
     )
 }
 
@@ -253,19 +291,20 @@ private fun AccountRow(title: String, subtitle: String, icon: androidx.compose.u
     Card(
         Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, AccountLine),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(Modifier.padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(AccountSoft, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = AccountGreen, modifier = Modifier.size(22.dp))
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(AccountSoft), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = AccountGreen, modifier = Modifier.size(21.dp))
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = AccountInk, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Text(title, color = AccountInk, fontSize = 13.sp, fontWeight = FontWeight.Black)
                 Text(subtitle, color = AccountMuted, fontSize = 10.sp)
             }
-            Icon(Icons.Default.ChevronLeft, null, tint = AccountMuted)
+            Icon(Icons.Default.ChevronLeft, null, tint = AccountMuted, modifier = Modifier.size(21.dp))
         }
     }
 }
@@ -280,16 +319,18 @@ private fun SettingToggle(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, AccountLine),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(Modifier.padding(horizontal = 15.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(AccountSoft, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = AccountGreen)
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(if (checked) AccountSoft else Color(0xFFF0F3F1)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = if (checked) AccountGreen else AccountMuted, modifier = Modifier.size(21.dp))
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = AccountInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(title, color = AccountInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
                 Text(subtitle, color = AccountMuted, fontSize = 10.sp)
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
@@ -312,7 +353,7 @@ private fun EditAccountDialog(session: SessionStore, onDismiss: () -> Unit, onSa
                 OutlinedTextField(value = name, onValueChange = { name = it; error = null }, label = { Text("الاسم") }, singleLine = true)
                 OutlinedTextField(value = phone, onValueChange = { phone = it; error = null }, label = { Text("رقم الهاتف") }, singleLine = true)
                 OutlinedTextField(value = email, onValueChange = { email = it; error = null }, label = { Text("البريد الإلكتروني") }, singleLine = true)
-                if (error != null) Text(error.orEmpty(), color = AccountDanger, fontSize = 11.sp)
+                if (error != null) Text(error.orEmpty(), color = AccountDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         },
         confirmButton = {
