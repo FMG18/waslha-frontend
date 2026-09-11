@@ -13,20 +13,20 @@ class TripRepository(private val api: WaslhaApi) {
         response.data
     }
 
+    suspend fun track(id: String): Result<TripTrackingDto> = runCatching {
+        val response = api.tripTracking(id)
+        require(response.success && response.data != null) { response.message ?: "تعذر تحديث تتبع الرحلة" }
+        response.data
+    }
+
     suspend fun list(customerId: String? = null): Result<List<Trip>> = runCatching {
         val response = api.trips(customerId)
         require(response.success && response.data != null) { response.message ?: "تعذر جلب الرحلات" }
         response.data
     }
 
-    suspend fun estimate(
-        pickup: Coordinates,
-        destination: Coordinates,
-        vehicleType: String = "economy"
-    ): Result<FareEstimate> = runCatching {
-        val payload = """
-            {"lat":${pickup.lat},"lng":${pickup.lng},"destination":{"lat":${destination.lat},"lng":${destination.lng}},"vehicleType":"$vehicleType"}
-        """.trimIndent()
+    suspend fun estimate(pickup: Coordinates, destination: Coordinates, vehicleType: String = "economy"): Result<FareEstimate> = runCatching {
+        val payload = """{"lat":${pickup.lat},"lng":${pickup.lng},"destination":{"lat":${destination.lat},"lng":${destination.lng}},"vehicleType":"$vehicleType"}"""
         val response = api.estimate(payload)
         require(response.success && response.data != null) { response.message ?: "تعذر حساب الأجرة" }
         response.data
