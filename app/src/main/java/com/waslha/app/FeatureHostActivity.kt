@@ -9,9 +9,12 @@ class FeatureHostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val screen = intent.getStringExtra("screen") ?: "support"
+        val session = SessionStore(this)
         setContent {
             MaterialTheme {
                 when (screen) {
+                    "account" -> AccountCenterScreen(session) { finish() }
+                    "settings" -> SettingsCenterScreen { finish() }
                     "places" -> SavedPlacesScreen { finish() }
                     "payments" -> PaymentsScreen { finish() }
                     "notifications" -> NotificationsScreen { finish() }
