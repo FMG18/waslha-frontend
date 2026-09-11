@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        startActivity(Intent(this, PassengerHomeV2Activity::class.java))
+        startActivity(Intent(this, TaxiBookingActivity::class.java))
         finish()
     }
 }
