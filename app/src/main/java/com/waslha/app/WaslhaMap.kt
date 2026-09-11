@@ -38,11 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.gson.JsonParser
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
@@ -50,7 +45,6 @@ import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
 import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
-import kotlin.math.roundToInt
 
 private fun calculateEstimatedFare(distanceKm: Double, durationMin: Int): Int {
     val base = 2500.0
@@ -149,20 +143,22 @@ fun WaslhaRideMap(
             }
 
             Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 14.dp),
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 MapControlButton(Icons.Default.Add, "تكبير") {
                     val center = viewport.cameraState?.center ?: Point.fromLngLat(pickup.lng, pickup.lat)
                     val currentZoom = viewport.cameraState?.zoom ?: 13.5
-                    viewport.flyTo(CameraOptions.Builder().center(center).zoom((currentZoom + 1.0).coerceAtMost(19.0)).build())
+                    viewport.flyTo(
+                        CameraOptions.Builder().center(center).zoom((currentZoom + 1.0).coerceAtMost(19.0)).build()
+                    )
                 }
                 MapControlButton(Icons.Default.Remove, "تصغير") {
                     val center = viewport.cameraState?.center ?: Point.fromLngLat(pickup.lng, pickup.lat)
                     val currentZoom = viewport.cameraState?.zoom ?: 13.5
-                    viewport.flyTo(CameraOptions.Builder().center(center).zoom((currentZoom - 1.0).coerceAtLeast(8.0)).build())
+                    viewport.flyTo(
+                        CameraOptions.Builder().center(center).zoom((currentZoom - 1.0).coerceAtLeast(8.0)).build()
+                    )
                 }
                 MapControlButton(Icons.Default.MyLocation, "موقعي") {
                     viewport.flyTo(
@@ -177,17 +173,11 @@ fun WaslhaRideMap(
             }
 
             Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = 10.dp),
+                modifier = Modifier.align(Alignment.Center).padding(bottom = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    Modifier
-                        .size(50.dp)
-                        .shadow(10.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(Color.White),
+                    Modifier.size(50.dp).shadow(10.dp, CircleShape).clip(CircleShape).background(Color.White),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -201,20 +191,15 @@ fun WaslhaRideMap(
             }
 
             Card(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 14.dp, start = 18.dp, end = 18.dp)
-                    .fillMaxWidth(),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp, start = 18.dp, end = 18.dp).fillMaxWidth(),
                 colors = CardDefaults.cardColors(Color.White.copy(alpha = .97f)),
                 shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(5.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier.size(40.dp).clip(CircleShape).background(if (destination == null) Color(0xFFFFF0ED) else Color(0xFFE7F6F0)),
+                        Modifier.size(40.dp).clip(CircleShape)
+                            .background(if (destination == null) Color(0xFFFFF0ED) else Color(0xFFE7F6F0)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -306,12 +291,7 @@ private fun MapControlButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier
-            .size(46.dp)
-            .shadow(5.dp, CircleShape)
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE2E9E5), CircleShape)
+        modifier = Modifier.size(46.dp).shadow(5.dp, CircleShape).clip(CircleShape).background(Color.White).border(1.dp, Color(0xFFE2E9E5), CircleShape)
     ) {
         Icon(icon, contentDescription, tint = Color(0xFF087F5B), modifier = Modifier.size(21.dp))
     }
@@ -322,48 +302,5 @@ private fun RouteMetric(label: String, value: String) {
     Column {
         Text(label, fontSize = 9.sp, color = Color(0xFF72807B))
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-    }
-}
-
-private fun fetchMapboxRoute(
-    origin: Coordinates,
-    destination: Coordinates,
-    accessToken: String
-): RouteResult? = null
-
-suspend fun fetchMapboxRoute(
-    origin: Coordinates,
-    destination: Coordinates,
-    accessToken: String
-): Result<RouteResult> = withContext(Dispatchers.IO) {
-    if (accessToken.isBlank() || accessToken.startsWith("YOUR_")) {
-        return@withContext Result.failure(IllegalStateException("Mapbox access token is not configured"))
-    }
-
-    runCatching {
-        val coordinates = "${origin.lng},${origin.lat};${destination.lng},${destination.lat}"
-        val url = "https://api.mapbox.com/directions/v5/mapbox/driving/$coordinates?alternatives=false&overview=full&geometries=geojson&access_token=$accessToken"
-        val request = Request.Builder().url(url).get().build()
-        OkHttpClient().newCall(request).execute().use { response ->
-            if (!response.isSuccessful) error("Mapbox Directions HTTP ${response.code}")
-            val body = response.body?.string().orEmpty()
-            val root = JsonParser.parseString(body).asJsonObject
-            val routes = root.getAsJsonArray("routes")
-            if (routes == null || routes.size() == 0) error("No route found")
-            val route = routes[0].asJsonObject
-            val geometry = route.getAsJsonObject("geometry")
-            val coords = geometry.getAsJsonArray("coordinates")
-            val points = buildList {
-                for (entry in coords) {
-                    val pair = entry.asJsonArray
-                    add(Coordinates(pair[1].asDouble, pair[0].asDouble))
-                }
-            }
-            RouteResult(
-                points = points,
-                distanceKm = (route.get("distance").asDouble / 1000.0 * 10.0).roundToInt() / 10.0,
-                durationMin = (route.get("duration").asDouble / 60.0).roundToInt()
-            )
-        }
     }
 }
