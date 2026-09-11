@@ -1,6 +1,9 @@
 package com.waslha.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +46,13 @@ class LaunchActivity : ComponentActivity() {
                 visible = true
                 delay(950)
                 val sessionStore = SessionStore(this@LaunchActivity)
+                if (sessionStore.isSignedIn) {
+                    FcmRegistration.register(this@LaunchActivity)
+                    if (Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7001)
+                    }
+                }
                 val target = if (sessionStore.isSignedIn) WaslhaCustomerActivity::class.java else AuthActivity::class.java
                 startActivity(Intent(this@LaunchActivity, target).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
