@@ -12,11 +12,13 @@ class FeatureHostActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 when (screen) {
-                    "places" -> SavedPlacesScreen { finish() }
-                    "payments" -> PaymentsScreen { finish() }
-                    "notifications" -> NotificationsScreen { finish() }
-                    "rating" -> RatingScreen { finish() }
-                    else -> SupportScreen { finish() }
+                    "places" -> ProSavedPlacesScreen { finish() }
+                    "payments" -> ProPaymentsScreen { finish() }
+                    "notifications" -> ProNotificationsScreen { finish() }
+                    "rating" -> ProRatingScreen { finish() }
+                    "security" -> ProSecurityScreen { finish() }
+                    "about" -> ProAboutScreen { finish() }
+                    else -> ProSupportScreen { finish() }
                 }
             }
         }
