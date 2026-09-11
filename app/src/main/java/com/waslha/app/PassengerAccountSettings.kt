@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -48,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +63,7 @@ private fun openFeature(context: Context, screen: String) {
 
 @Composable
 fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
+    val context = LocalContext.current
     var editing by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     val displayName = session.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها"
@@ -72,7 +71,7 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(AccountBg)) {
         AccountHeader("حسابي", onBack)
-        LazyColumn(
+        androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -81,11 +80,11 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
                 Card(
                     Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(AccountGreen),
-                    shape = RoundedCornerShape(28.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
                     elevation = CardDefaults.cardElevation(3.dp)
                 ) {
                     Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(62.dp).background(Color.White.copy(alpha = .18f), CircleShape), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(62.dp).background(Color.White.copy(alpha = .18f), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.AccountCircle, null, tint = Color.White, modifier = Modifier.size(42.dp))
                         }
                         Spacer(Modifier.size(14.dp))
@@ -102,19 +101,19 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
             }
             item { AccountSectionTitle("إدارة الحساب") }
             item { AccountRow("تعديل البيانات", "الاسم ورقم الهاتف والبريد", Icons.Default.Edit) { editing = true } }
-            item { AccountRow("الخصوصية والأمان", "الحماية وصلاحيات التطبيق", Icons.Default.Security) { openFeature(androidx.compose.ui.platform.LocalContext.current, "security") } }
+            item { AccountRow("الخصوصية والأمان", "الحماية وصلاحيات التطبيق", Icons.Default.Security) { openFeature(context, "security") } }
             item { AccountSectionTitle("الخدمات") }
-            item { AccountRow("الأماكن المحفوظة", "المنزل والعمل والمفضلة", Icons.Default.LocationOn) { openFeature(androidx.compose.ui.platform.LocalContext.current, "places") } }
-            item { AccountRow("طرق الدفع", "طريقة الدفع المتاحة", Icons.Default.CreditCard) { openFeature(androidx.compose.ui.platform.LocalContext.current, "payments") } }
-            item { AccountRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications) { openFeature(androidx.compose.ui.platform.LocalContext.current, "notifications") } }
-            item { AccountRow("المساعدة والدعم", "الأسئلة والحلول", Icons.Default.HelpOutline) { openFeature(androidx.compose.ui.platform.LocalContext.current, "support") } }
-            item { AccountRow("الإعدادات", "تفضيلات التطبيق", Icons.Default.Settings) { openFeature(androidx.compose.ui.platform.LocalContext.current, "settings") } }
-            item { AccountRow("عن وصلها", "معلومات التطبيق والنسخة", Icons.Default.Info) { openFeature(androidx.compose.ui.platform.LocalContext.current, "about") } }
+            item { AccountRow("الأماكن المحفوظة", "المنزل والعمل والمفضلة", Icons.Default.LocationOn) { openFeature(context, "places") } }
+            item { AccountRow("طرق الدفع", "طريقة الدفع المتاحة", Icons.Default.CreditCard) { openFeature(context, "payments") } }
+            item { AccountRow("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications) { openFeature(context, "notifications") } }
+            item { AccountRow("المساعدة والدعم", "الأسئلة والحلول", Icons.Default.HelpOutline) { openFeature(context, "support") } }
+            item { AccountRow("الإعدادات", "تفضيلات التطبيق", Icons.Default.Settings) { openFeature(context, "settings") } }
+            item { AccountRow("عن وصلها", "معلومات التطبيق والنسخة", Icons.Default.Info) { openFeature(context, "about") } }
             item {
                 Button(
                     onClick = { editing = true },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(17.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccountGreen)
                 ) { Text("تعديل الحساب", fontWeight = FontWeight.Black) }
             }
@@ -132,7 +131,7 @@ fun AccountCenterScreen(session: SessionStore, onBack: () -> Unit) {
 
 @Composable
 fun SettingsCenterScreen(onBack: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("waslha_preferences", Context.MODE_PRIVATE) }
     var notifications by remember { mutableStateOf(prefs.getBoolean("notifications", true)) }
     var location by remember { mutableStateOf(prefs.getBoolean("location", true)) }
@@ -140,34 +139,14 @@ fun SettingsCenterScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(AccountBg)) {
         AccountHeader("الإعدادات", onBack)
-        LazyColumn(
+        androidx.compose.foundation.lazy.LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item { AccountSectionTitle("تفضيلات التطبيق") }
-            item {
-                SettingToggle(
-                    "الإشعارات",
-                    "تنبيهات الرحلات والتحديثات",
-                    Icons.Default.Notifications,
-                    notifications
-                ) {
-                    notifications = it
-                    prefs.edit().putBoolean("notifications", it).apply()
-                }
-            }
-            item {
-                SettingToggle(
-                    "الموقع أثناء الحجز",
-                    "استخدام موقعك لتحديد الانطلاق",
-                    Icons.Default.LocationOn,
-                    location
-                ) {
-                    location = it
-                    prefs.edit().putBoolean("location", it).apply()
-                }
-            }
+            item { SettingToggle("الإشعارات", "تنبيهات الرحلات والتحديثات", Icons.Default.Notifications, notifications) { notifications = it; prefs.edit().putBoolean("notifications", it).apply() } }
+            item { SettingToggle("الموقع أثناء الحجز", "استخدام موقعك لتحديد الانطلاق", Icons.Default.LocationOn, location) { location = it; prefs.edit().putBoolean("location", it).apply() } }
             item { AccountSectionTitle("الخصوصية") }
             item { AccountRow("الخصوصية والأمان", "معلومات حماية الحساب والموقع", Icons.Default.Security) { openFeature(context, "security") } }
             item { AccountRow("حماية تسجيل الدخول", "إدارة جلسة الحساب", Icons.Default.Lock) { open = true } }
@@ -196,7 +175,7 @@ private fun AccountHeader(title: String, onBack: () -> Unit) {
         TextButton(onClick = onBack) { Text("رجوع", color = AccountGreen, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.weight(1f))
         Text(title, color = AccountInk, fontSize = 25.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.size(10.dp))
     }
 }
 
@@ -207,14 +186,9 @@ private fun AccountSectionTitle(text: String) {
 
 @Composable
 private fun AccountRow(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(Color.White),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(1.dp)
-    ) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(Color.White), shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(1.dp)) {
         Row(Modifier.padding(horizontal = 15.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(AccountSoft, CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).background(AccountSoft, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = AccountGreen, modifier = Modifier.size(22.dp))
             }
             Spacer(Modifier.size(12.dp))
@@ -229,11 +203,9 @@ private fun AccountRow(title: String, subtitle: String, icon: androidx.compose.u
 
 @Composable
 private fun SettingToggle(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(Color.White), shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 15.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(AccountSoft, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = AccountGreen)
-            }
+            Box(Modifier.size(44.dp).background(AccountSoft, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = AccountGreen) }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = AccountInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
@@ -254,15 +226,16 @@ private fun EditAccountDialog(session: SessionStore, onDismiss: () -> Unit, onSa
         title = { Text("تعديل بيانات الحساب", fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("الاسم") }, singleLine = true)
-                OutlinedTextField(phone, { phone = it }, label = { Text("رقم الهاتف") }, singleLine = true)
-                OutlinedTextField(email, { email = it }, label = { Text("البريد الإلكتروني") }, singleLine = true)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, singleLine = true)
+                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("رقم الهاتف") }, singleLine = true)
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("البريد الإلكتروني") }, singleLine = true)
             }
         },
         confirmButton = {
-            TextButton(onClick = { session.updateProfile(name.trim().ifBlank { null }, phone.trim().ifBlank { null }, email.trim().ifBlank { null }); onSaved() }) {
-                Text("حفظ", color = AccountGreen, fontWeight = FontWeight.Black)
-            }
+            TextButton(onClick = {
+                session.updateProfile(name.trim().ifBlank { null }, phone.trim().ifBlank { null }, email.trim().ifBlank { null })
+                onSaved()
+            }) { Text("حفظ", color = AccountGreen, fontWeight = FontWeight.Black) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = AccountMuted) } }
     )
