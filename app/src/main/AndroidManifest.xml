@@ -25,6 +25,7 @@
         <activity android:name=".FeatureHostActivity" android:exported="false" />
         <activity android:name=".SafeTaxiActivity" android:exported="false" />
         <activity android:name=".TaxiBookingActivity" android:exported="false" />
+        <activity android:name=".TripResumeActivity" android:exported="false" />
         <activity android:name=".WaslhaCustomerActivity" android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
