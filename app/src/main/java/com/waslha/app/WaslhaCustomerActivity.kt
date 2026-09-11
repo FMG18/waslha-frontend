@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +40,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -54,7 +54,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -295,11 +294,7 @@ private fun CustomerScaffold(page: CustomerPage, onPage: (CustomerPage) -> Unit,
     Scaffold(
         containerColor = CBackground,
         bottomBar = {
-            NavigationBar(
-                containerColor = CWhite,
-                tonalElevation = 0.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
+            NavigationBar(containerColor = CWhite, tonalElevation = 0.dp, modifier = Modifier.navigationBarsPadding()) {
                 NavigationBarItem(selected == 0, { onPage(CustomerPage.Home) }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("الرئيسية") })
                 NavigationBarItem(selected == 1, { onPage(CustomerPage.Trips) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("رحلاتي") })
                 NavigationBarItem(selected == 2, { onPage(CustomerPage.Profile) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("حسابي") })
@@ -341,47 +336,99 @@ private fun CustomerHome(
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(CPrimary), elevation = CardDefaults.cardElevation(0.dp)) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), colors = CardDefaults.cardColors(CPrimary), elevation = CardDefaults.cardElevation(0.dp)) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("وين نوصلك؟", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
-                            Text("احجز تكسي خلال ثوانٍ", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                            Text("رحلتك تبدأ من هنا", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
+                            Text("وين نوصلك؟", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
                         }
-                        Box(Modifier.size(42.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(23.dp))
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(24.dp))
                         }
                     }
-                    LocationRow("نقطة الانطلاق", pickupLabel, Icons.Default.MyLocation, onRefreshLocation, locationLoading, emphasized = false)
-                    LocationRow("الوجهة", destination?.title ?: "اختيار الوجهة من الخريطة", Icons.Default.LocationOn, onDestination, false, emphasized = true)
+                    RoutePoint(
+                        label = "من",
+                        value = pickupLabel,
+                        icon = Icons.Default.MyLocation,
+                        accent = false,
+                        loading = locationLoading,
+                        onClick = onRefreshLocation
+                    )
+                    RouteConnector()
+                    RoutePoint(
+                        label = "إلى",
+                        value = destination?.title ?: "اختيار وجهتك من الخريطة",
+                        icon = Icons.Default.LocationOn,
+                        accent = true,
+                        loading = false,
+                        onClick = onDestination
+                    )
+                    if (destination != null) {
+                        Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Shield, null, tint = CAccent, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("تم تحديد الوجهة", color = Color.White.copy(alpha = .78f), fontSize = 10.sp)
+                        }
+                    }
                 }
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionTitle("اختر نوع التكسي", "الاختيار الأنسب لمشوارك")
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                SectionTitle("كيف تحب تكون الرحلة؟", "اختر السيارة الأنسب لك")
                 v2Vehicles.forEach { option -> VehicleRow(option, option.id == vehicle.id) { onVehicle(option) } }
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, CLine)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(CWhite),
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, CLine),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(CSoft), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CreditCard, null, tint = CPrimary, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("الدفع نقداً", color = CInk, fontWeight = FontWeight.Bold)
-                        Text(if (estimateLoading) "جاري حساب الأجرة…" else estimate?.let { "التقدير ${it.estimatedFare} ${it.currency}" } ?: "اختر الوجهة لحساب الأجرة", color = CMuted, fontSize = 11.sp)
+                        Text("الدفع نقداً", color = CInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(
+                            when {
+                                estimateLoading -> "جاري حساب الأجرة…"
+                                estimate != null -> "السعر التقديري للرحلة"
+                                else -> "حدد الوجهة لعرض السعر"
+                            },
+                            color = CMuted,
+                            fontSize = 10.sp
+                        )
                     }
-                    if (estimate != null) Text("${estimate!!.distanceKm.toInt()} كم", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (estimateLoading) CircularProgressIndicator(Modifier.size(18.dp), color = CPrimary, strokeWidth = 2.dp)
+                        else if (estimate != null) {
+                            Text("${estimate!!.estimatedFare}", color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                            Text(estimate!!.currency, color = CMuted, fontSize = 9.sp)
+                        } else Text("—", color = CMuted, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    }
+                }
+                if (estimate != null) {
+                    Row(Modifier.fillMaxWidth().background(CSoft2).padding(horizontal = 14.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("المسافة ${"%.1f".format(estimate!!.distanceKm)} كم", color = CMuted, fontSize = 10.sp)
+                        Text("المدة ${estimate!!.durationMin} دقيقة تقريباً", color = CMuted, fontSize = 10.sp)
+                    }
                 }
             }
         }
         item {
             if (!error.isNullOrBlank()) {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFFFF1F0)), shape = RoundedCornerShape(15.dp)) {
-                    Text(error, Modifier.padding(12.dp), color = CDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFFFF3F1)), shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color(0xFFF6C9C4))) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = CDanger, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text(error, color = CDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -390,23 +437,62 @@ private fun CustomerHome(
                 enabled = !requesting,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(19.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CPurple)
+                colors = ButtonDefaults.buttonColors(containerColor = CPurple, disabledContainerColor = CPurple.copy(alpha = .55f))
             ) {
                 if (requesting) CircularProgressIndicator(Modifier.size(21.dp), color = Color.White, strokeWidth = 2.dp)
                 else Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(21.dp))
-                    Spacer(Modifier.width(8.dp))
                     Text("اطلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(21.dp))
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Shield, null, tint = CPrimary, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(7.dp))
-                Text("تجربة حجز بسيطة وواضحة داخل سوريا", color = CMuted, fontSize = 10.sp)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Shield, null, tint = CPrimary, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("حجز واضح وسريع داخل سوريا", color = CMuted, fontSize = 10.sp)
             }
         }
+    }
+}
+
+@Composable
+private fun RoutePoint(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accent: Boolean,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(if (accent) Color.White else Color.White.copy(alpha = .12f)),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(if (accent) CSoft else Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = if (accent) CPrimary else Color.White, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, color = if (accent) CMuted else Color.White.copy(alpha = .68f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(value, color = if (accent) CInk else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (accent) CPrimary else Color.White, strokeWidth = 2.dp)
+            else Icon(Icons.Default.ChevronLeft, null, tint = if (accent) CMuted else Color.White.copy(alpha = .72f), modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun RouteConnector() {
+    Row(Modifier.padding(start = 18.dp, top = 1.dp, bottom = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(2.dp).height(12.dp).background(CAccent))
+        Spacer(Modifier.width(8.dp))
+        Text("مسار الرحلة", color = Color.White.copy(alpha = .55f), fontSize = 8.sp)
     }
 }
 
@@ -419,35 +505,12 @@ private fun SectionTitle(title: String, subtitle: String) {
 }
 
 @Composable
-private fun LocationRow(title: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, loading: Boolean, emphasized: Boolean) {
-    Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
-        colors = CardDefaults.cardColors(if (emphasized) Color.White else Color.White.copy(alpha = .12f)),
-        shape = RoundedCornerShape(17.dp),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(39.dp).clip(CircleShape).background(if (emphasized) CSoft else Color.White.copy(alpha = .15f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = if (emphasized) CPrimary else Color.White, modifier = Modifier.size(20.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, color = if (emphasized) CMuted else Color.White.copy(alpha = .72f), fontSize = 10.sp)
-                Text(value, color = if (emphasized) CInk else Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (emphasized) CPrimary else Color.White, strokeWidth = 2.dp)
-            else Icon(Icons.Default.ChevronLeft, null, tint = if (emphasized) CMuted else Color.White.copy(alpha = .75f))
-        }
-    }
-}
-
-@Composable
 private fun VehicleRow(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Unit) {
     Card(
         Modifier.fillMaxWidth().clickable { onClick() },
         colors = CardDefaults.cardColors(if (selected) CSoft else CWhite),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine),
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -456,14 +519,20 @@ private fun VehicleRow(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Uni
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    if (vehicle.id == "economy") {
+                        Spacer(Modifier.width(7.dp))
+                        Text("شائع", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 8.sp)
+                    }
+                }
                 Text(vehicle.subtitle, color = CMuted, fontSize = 10.sp)
             }
             if (selected) {
                 Box(Modifier.size(25.dp).clip(CircleShape).background(CPrimary), contentAlignment = Alignment.Center) {
                     Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
                 }
-            }
+            } else Icon(Icons.Default.ChevronLeft, null, tint = CMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -483,7 +552,7 @@ private fun CustomerTrips(trips: List<Trip>, loading: Boolean, error: String?, o
         else if (trips.isEmpty()) EmptyState(Icons.Default.History, "لا توجد رحلات بعد", "بعد أول حجز ستظهر تفاصيل رحلتك هنا")
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
             items(trips) { trip ->
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(20.dp), border = androidx.compose.foundation.BorderStroke(1.dp, CLine)) {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, CLine)) {
                     Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(trip.statusLabel(), color = CPrimary, fontWeight = FontWeight.Black)
@@ -547,7 +616,7 @@ private fun CustomerProfile(sessionStore: SessionStore, onPage: (CustomerPage) -
 
 @Composable
 private fun ProfileAction(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = androidx.compose.foundation.BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = CPrimary, modifier = Modifier.size(21.dp))
@@ -595,7 +664,7 @@ private fun NotificationPage() {
 @Composable
 private fun SettingToggle(title: String, subtitle: String, initial: Boolean) {
     var enabled by remember { mutableStateOf(initial) }
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = androidx.compose.foundation.BorderStroke(1.dp, CLine)) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(19.dp), border = BorderStroke(1.dp, CLine)) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.Notifications, null, tint = CPrimary, modifier = Modifier.size(21.dp))
@@ -684,7 +753,7 @@ private fun MapDestinationPage(pickup: Coordinates, selected: Coordinates?, onBa
 
 @Composable
 private fun ActiveTripCardOverlay(trip: Trip, onOpen: () -> Unit, onCancel: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(12.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, CLine)) {
+    Card(Modifier.fillMaxWidth().padding(12.dp), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(10.dp), border = BorderStroke(1.dp, CLine)) {
         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = CPrimary) }
             Spacer(Modifier.width(10.dp))
