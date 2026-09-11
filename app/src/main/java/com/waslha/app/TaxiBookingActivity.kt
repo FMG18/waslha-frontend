@@ -1,6 +1,8 @@
 package com.waslha.app
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -555,15 +558,26 @@ private fun BottomItem(icon: androidx.compose.ui.graphics.vector.ImageVector, te
 
 @Composable
 private fun ProfileDialog(session: SessionStore, onDismiss: () -> Unit, onLogout: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("حسابي", fontWeight = FontWeight.Black) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text(session.name?.takeIf { it.isNotBlank() } ?: "مستخدم وصلها", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 session.email?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 12.sp, color = TaxiMuted) }
                 session.phone?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 12.sp, color = TaxiMuted) }
                 Text("طريقة الدفع الحالية: نقدي", fontSize = 12.sp, color = TaxiMuted)
+                TextButton(onClick = { context.startActivity(Intent(context, FeatureHostActivity::class.java).putExtra("screen", "account")); onDismiss() }) {
+                    Icon(Icons.Default.Person, null, tint = TaxiGreen, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("فتح الحساب الكامل", color = TaxiGreen, fontWeight = FontWeight.Bold)
+                }
+                TextButton(onClick = { context.startActivity(Intent(context, FeatureHostActivity::class.java).putExtra("screen", "settings")); onDismiss() }) {
+                    Icon(Icons.Default.Settings, null, tint = TaxiGreen, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("الإعدادات", color = TaxiGreen, fontWeight = FontWeight.Bold)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } },
