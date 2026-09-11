@@ -13,6 +13,7 @@ class SessionStore(context: Context) {
     val email: String? get() = prefs.getString("email", null)
     val name: String? get() = prefs.getString("name", null)
     val picture: String? get() = prefs.getString("picture", null)
+    val activeTripId: String? get() = prefs.getString("activeTripId", null)
     val isSignedIn: Boolean get() = !token.isNullOrBlank()
 
     fun save(session: SessionData) {
@@ -32,6 +33,14 @@ class SessionStore(context: Context) {
             .putString("phone", phone)
             .putString("email", email)
             .apply()
+    }
+
+    fun setActiveTrip(tripId: String) {
+        prefs.edit().putString("activeTripId", tripId).apply()
+    }
+
+    fun clearActiveTrip() {
+        prefs.edit().remove("activeTripId").apply()
     }
 
     fun clear() {
