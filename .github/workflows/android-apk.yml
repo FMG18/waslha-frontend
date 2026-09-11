@@ -62,6 +62,11 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
+      - name: Normalize passenger Compose imports
+        shell: bash
+        run: |
+          sed -i '/import androidx.compose.foundation.layout.weight/d' app/src/main/java/com/waslha/app/PassengerFeatures.kt
+
       - name: Build signed release APK
         run: |
           gradle assembleRelease --stacktrace \
