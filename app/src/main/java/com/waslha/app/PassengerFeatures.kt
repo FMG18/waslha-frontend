@@ -19,8 +19,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -44,42 +46,57 @@ private val FeatureGreen = Color(0xFF078A60)
 private val FeatureInk = Color(0xFF10201B)
 private val FeatureMuted = Color(0xFF6D7B76)
 private val FeatureSurface = Color(0xFFF3F7F5)
+private val FeatureSoft = Color(0xFFE8F6F0)
 
 @Composable
 fun SavedPlacesScreen(onBack: () -> Unit) {
     FeatureScaffold("الأماكن المحفوظة", onBack) {
+        Text("اختصارات جاهزة للرحلات المتكررة", color = FeatureMuted, fontSize = 11.sp)
+        Spacer(Modifier.height(10.dp))
         val places = listOf(
-            SavedPlace("المنزل", "موقعي المحفوظ", "🏠"),
-            SavedPlace("العمل", "موقعي المحفوظ", "💼"),
+            SavedPlace("المنزل", "موقع محفوظ", "🏠"),
+            SavedPlace("العمل", "موقع محفوظ", "💼"),
             SavedPlace("المفضلة", "مكان محفوظ", "⭐")
         )
         LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            items(places) { PlaceRow(it) }
+            items(places) { place -> PlaceRow(place) }
         }
+        Spacer(Modifier.height(10.dp))
+        HintCard("يمكن ربط هذه الأماكن بمواضع فعلية لاحقًا من شاشة الخريطة.")
     }
 }
 
 @Composable
 fun PaymentsScreen(onBack: () -> Unit) {
+    var selected by remember { mutableStateOf("نقداً") }
     FeatureScaffold("طرق الدفع", onBack) {
-        val methods = listOf(
-            PaymentMethod("نقداً", "الدفع للكابتن بعد الوصول", "💵"),
-            PaymentMethod("محفظة وصلها", "رصيد الحساب", "👛")
-        )
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            items(methods) { method ->
-                Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(19.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        BoxIcon(method.emoji)
-                        Spacer(Modifier.size(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(method.title, fontWeight = FontWeight.Bold, color = FeatureInk)
-                            Text(method.subtitle, color = FeatureMuted, fontSize = 11.sp)
-                        }
-                        Icon(Icons.Default.CreditCard, null, tint = FeatureGreen)
-                    }
-                }
+        Text("اختر الطريقة المستخدمة عند طلب الرحلة", color = FeatureMuted, fontSize = 11.sp)
+        Spacer(Modifier.height(10.dp))
+        PaymentChoice("نقداً", "الدفع للكابتن بعد الوصول", "💵", selected == "نقداً") { selected = "نقداً" }
+        Spacer(Modifier.height(9.dp))
+        PaymentChoice("محفظة وصلها", "جاهزة للتفعيل لاحقًا", "👛", selected == "محفظة وصلها") { selected = "محفظة وصلها" }
+        Spacer(Modifier.height(12.dp))
+        HintCard(if (selected == "نقداً") "الدفع النقدي هو المتاح حاليًا." else "المحفظة غير مفعلة بعد، وتم الاحتفاظ بالخيار للتطوير القادم.")
+    }
+}
+
+@Composable
+private fun PaymentChoice(title: String, subtitle: String, emoji: String, selected: Boolean, onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(if (selected) FeatureSoft else Color.White),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(if (selected) 2.dp else 1.dp)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            BoxIcon(emoji)
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Black, color = FeatureInk)
+                Text(subtitle, color = FeatureMuted, fontSize = 11.sp)
             }
+            if (selected) Text("✓", color = FeatureGreen, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            else Icon(Icons.Default.CreditCard, null, tint = FeatureGreen)
         }
     }
 }
@@ -87,13 +104,15 @@ fun PaymentsScreen(onBack: () -> Unit) {
 @Composable
 fun NotificationsScreen(onBack: () -> Unit) {
     FeatureScaffold("الإشعارات", onBack) {
-        val items = listOf(
-            NotificationItem("تحديث الرحلة", "سنرسل لك حالة الكابتن أولاً بأول", "الآن", true),
-            NotificationItem("عرض جديد", "خصم على رحلتك القادمة", "أمس", false),
-            NotificationItem("وصلها", "نتمنى لك رحلة سعيدة", "هذا الأسبوع", false)
+        Text("آخر التنبيهات الخاصة برحلاتك", color = FeatureMuted, fontSize = 11.sp)
+        Spacer(Modifier.height(10.dp))
+        val entries = listOf(
+            NotificationItem("تحديث الرحلة", "سنرسل لك حالة الرحلة أولاً بأول", "الآن", true),
+            NotificationItem("عرض جديد", "قد تتوفر عروض على الرحلات القادمة", "أمس", false),
+            NotificationItem("وصلها", "نتمنى لك رحلة سعيدة وآمنة", "هذا الأسبوع", false)
         )
         LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            items(items) { item ->
+            items(entries) { item ->
                 Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(19.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                         BoxIcon("🔔")
@@ -139,11 +158,7 @@ fun SupportScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
             }
             items(topics) { topic ->
-                Card(
-                    colors = CardDefaults.cardColors(Color.White),
-                    shape = RoundedCornerShape(17.dp),
-                    modifier = Modifier.fillMaxWidth().clickable { selected = topic }
-                ) {
+                Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth().clickable { selected = topic }) {
                     Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.HelpOutline, null, tint = FeatureGreen)
                         Spacer(Modifier.size(10.dp))
@@ -170,19 +185,14 @@ fun RatingScreen(onBack: () -> Unit) {
     FeatureScaffold("تقييم الرحلة", onBack) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Spacer(Modifier.height(24.dp))
-            BoxIcon("🚕")
+            BoxIcon("⭐")
             Spacer(Modifier.height(14.dp))
             Text("كيف كانت رحلتك؟", fontSize = 24.sp, fontWeight = FontWeight.Black, color = FeatureInk)
             Text("قيّم تجربتك حتى نحسّن وصلها", color = FeatureMuted)
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..5).forEach { value ->
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = "$value",
-                        tint = if (value <= rating) FeatureGreen else Color(0xFFD4DDD9),
-                        modifier = Modifier.size(36.dp).clickable { rating = value }
-                    )
+                    Icon(Icons.Default.Star, "$value", tint = if (value <= rating) FeatureGreen else Color(0xFFD4DDD9), modifier = Modifier.size(36.dp).clickable { rating = value })
                 }
             }
             Spacer(Modifier.height(22.dp))
@@ -192,8 +202,35 @@ fun RatingScreen(onBack: () -> Unit) {
 }
 
 @Composable
+fun SecurityScreen(onBack: () -> Unit) {
+    FeatureScaffold("الخصوصية والأمان", onBack) {
+        InfoCard("حماية الحساب", "جلسة الدخول محفوظة داخل التطبيق.", Icons.Default.Security)
+        Spacer(Modifier.height(9.dp))
+        InfoCard("الموقع", "يستخدم لتحديد نقطة الانطلاق أثناء الحجز.", Icons.Default.LocationOn)
+        Spacer(Modifier.height(9.dp))
+        HintCard("لا تشارك بيانات الدخول أو رموز التحقق مع أي شخص.")
+    }
+}
+
+@Composable
+fun AboutScreen(onBack: () -> Unit) {
+    FeatureScaffold("عن وصلها", onBack) {
+        Card(colors = CardDefaults.cardColors(FeatureGreen), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp)) {
+                Text("وصلها", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                Text("تطبيق تاكسي للركاب", color = Color.White.copy(alpha = .9f), fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("نسخة تجريبية", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        InfoCard("الخدمة", "رحلات تاكسي داخل سوريا في هذه المرحلة.", Icons.Default.Info)
+    }
+}
+
+@Composable
 private fun FeatureScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
+    Column(Modifier.fillMaxWidth().background(FeatureSurface).padding(horizontal = 18.dp, vertical = 16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("رجوع", color = FeatureGreen, fontWeight = FontWeight.Bold) }
             Spacer(Modifier.weight(1f))
@@ -220,8 +257,33 @@ private fun PlaceRow(place: SavedPlace) {
 }
 
 @Composable
+private fun InfoCard(title: String, body: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(19.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = FeatureGreen, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold, color = FeatureInk)
+                Text(body, color = FeatureMuted, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HintCard(text: String) {
+    Card(colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.NotificationsNone, null, tint = FeatureGreen)
+            Spacer(Modifier.size(9.dp))
+            Text(text, color = FeatureMuted, fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
 private fun BoxIcon(text: String) {
-    Row(Modifier.size(44.dp).background(FeatureSurface, CircleShape), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.size(44.dp).background(FeatureSurface, CircleShape), contentAlignment = Alignment.Center) {
         Text(text, fontSize = 20.sp)
     }
 }
