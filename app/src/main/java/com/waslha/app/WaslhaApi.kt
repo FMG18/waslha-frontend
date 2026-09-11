@@ -38,6 +38,8 @@ interface WaslhaApi {
     suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<NotificationDto>>
     @PATCH("/api/v1/notifications/{id}/read")
     suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
+    @POST("/api/v1/notifications/device-token")
+    suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): ApiEnvelope<DeviceTokenResponse>
 }
 
 data class AppUpdateDto(val updateAvailable: Boolean, val versionName: String = "", val versionCode: Int = 0, val releaseNotes: String = "", val publishedAt: String? = null, val mandatory: Boolean = false, val apk: AppUpdateApkDto? = null)
@@ -50,3 +52,5 @@ data class PlaceSearchDto(val id: String, val name: String, val address: String,
 data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
 data class MarkNotificationReadRequest(val userId: String)
 data class NotificationReadDto(val id: String, val read: Boolean)
+data class DeviceTokenRequest(val token: String)
+data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
