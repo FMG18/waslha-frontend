@@ -12,8 +12,29 @@ android {
         applicationId = "com.waslha.captain"
         minSdk = 26
         targetSdk = 35
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 102
+        versionName = "1.0.2"
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("WASLHA_KEYSTORE_PATH")
+            val keystorePassword = System.getenv("WASLHA_KEYSTORE_PASSWORD")
+            val keyAlias = System.getenv("WASLHA_KEY_ALIAS")
+            val keyPassword = System.getenv("WASLHA_KEY_PASSWORD")
+            if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
