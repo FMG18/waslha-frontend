@@ -7,7 +7,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 private const val BASE_URL = "https://waslha-backend.vercel.app/"
 
@@ -17,15 +19,23 @@ data class CodeResponse(val expiresIn: Int = 300, val devCode: String? = null)
 data class VerifyRequest(val phone: String, val code: String)
 data class Session(val userId: String, val phone: String = "", val role: String = "", val token: String = "", val name: String = "")
 data class AdminTotals(val trips: Int = 0, val activeTrips: Int = 0, val waitingTrips: Int = 0, val completedTrips: Int = 0, val drivers: Int = 0, val onlineDrivers: Int = 0, val revenue: Int = 0)
-data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val driver: AdminDriverDto? = null)
+data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
+data class AdminCoordinates(val lat: Double = 0.0, val lng: Double = 0.0)
 data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0)
 data class AdminOverview(val totals: AdminTotals, val latestTrips: List<AdminTripDto> = emptyList())
+data class AdminDriverAssignRequest(val driverId: String)
+data class AdminStatusRequest(val status: String)
+data class AdminCancelRequest(val reason: String = "admin_cancel")
 
 interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
     @POST("api/v1/auth/verify-code") suspend fun verifyCode(@Body body: VerifyRequest): Envelope<Session>
     @GET("api/v1/admin/overview") suspend fun overview(): Envelope<AdminOverview>
     @GET("api/v1/admin/trips") suspend fun trips(): Envelope<List<AdminTripDto>>
+    @GET("api/v1/admin/trips/{id}") suspend fun trip(@Path("id") id: String): Envelope<AdminTripDto>
+    @POST("api/v1/admin/trips/{id}/assign-driver") suspend fun assignDriver(@Path("id") id: String, @Body body: AdminDriverAssignRequest): Envelope<AdminTripDto>
+    @PATCH("api/v1/admin/trips/{id}/status") suspend fun updateStatus(@Path("id") id: String, @Body body: AdminStatusRequest): Envelope<AdminTripDto>
+    @POST("api/v1/admin/trips/{id}/cancel") suspend fun cancelTrip(@Path("id") id: String, @Body body: AdminCancelRequest): Envelope<AdminTripDto>
     @GET("api/v1/admin/drivers") suspend fun drivers(): Envelope<List<AdminDriverDto>>
 }
 
