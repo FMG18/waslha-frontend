@@ -1,6 +1,9 @@
 package com.waslha.captain
 
 import android.content.Context
+import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -26,52 +29,33 @@ data class DriverAvailabilityRequest(val available: Boolean)
 data class TripStatusRequest(val status: String)
 data class DeviceTokenRequest(val token: String)
 data class CaptainNotification(val id: String, val title: String, val body: String, val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
-
 data class CaptainSessionData(val userId: String, val phone: String, val token: String, val role: String)
 
 interface CaptainApi {
-    @POST("api/v1/auth/request-code")
-    suspend fun requestCode(@Body body: OtpRequest): ApiEnvelope<OtpResponse>
-
-    @POST("api/v1/auth/verify-code")
-    suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
-
-    @GET("api/v1/captain/me")
-    suspend fun me(): ApiEnvelope<Driver>
-
-    @PATCH("api/v1/captain/availability")
-    suspend fun availability(@Body body: DriverAvailabilityRequest): ApiEnvelope<Driver>
-
-    @GET("api/v1/captain/trips/available")
-    suspend fun availableTrips(): ApiEnvelope<List<Trip>>
-
-    @GET("api/v1/captain/trips")
-    suspend fun trips(): ApiEnvelope<List<Trip>>
-
-    @POST("api/v1/captain/trips/{id}/accept")
-    suspend fun acceptTrip(@Path("id") id: String): ApiEnvelope<Trip>
-
-    @PATCH("api/v1/captain/trips/{id}/status")
-    suspend fun updateTripStatus(@Path("id") id: String, @Body body: TripStatusRequest): ApiEnvelope<Trip>
-
-    @GET("api/v1/captain/trips/{id}")
-    suspend fun trip(@Path("id") id: String): ApiEnvelope<Trip>
-
-    @GET("api/v1/notifications")
-    suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<CaptainNotification>>
-
-    @POST("api/v1/notifications/device-token")
-    suspend fun registerDevice(@Body body: DeviceTokenRequest): ApiEnvelope<Map<String, Any>>
+    @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: OtpRequest): ApiEnvelope<OtpResponse>
+    @POST("api/v1/auth/verify-code") suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
+    @GET("api/v1/captain/me") suspend fun me(): ApiEnvelope<Driver>
+    @PATCH("api/v1/captain/availability") suspend fun availability(@Body body: DriverAvailabilityRequest): ApiEnvelope<Driver>
+    @GET("api/v1/captain/trips/available") suspend fun availableTrips(): ApiEnvelope<List<Trip>>
+    @GET("api/v1/captain/trips") suspend fun trips(): ApiEnvelope<List<Trip>>
+    @POST("api/v1/captain/trips/{id}/accept") suspend fun acceptTrip(@Path("id") id: String): ApiEnvelope<Trip>
+    @PATCH("api/v1/captain/trips/{id}/status") suspend fun updateTripStatus(@Path("id") id: String, @Body body: TripStatusRequest): ApiEnvelope<Trip>
+    @GET("api/v1/captain/trips/{id}") suspend fun trip(@Path("id") id: String): ApiEnvelope<Trip>
+    @GET("api/v1/notifications") suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<CaptainNotification>>
+    @POST("api/v1/notifications/device-token") suspend fun registerDevice(@Body body: DeviceTokenRequest): ApiEnvelope<Map<String, Any>>
 }
 
 object CaptainApiProvider {
     private var initialized = false
+    private lateinit var appContext: Context
+    private lateinit var realApi: CaptainApi
     lateinit var api: CaptainApi
         private set
 
     fun init(context: Context) {
         if (initialized) return
-        val prefs = context.applicationContext.getSharedPreferences("waslha_captain", Context.MODE_PRIVATE)
+        appContext = context.applicationContext
+        val prefs = appContext.getSharedPreferences("waslha_captain", Context.MODE_PRIVATE)
         val authInterceptor = Interceptor { chain ->
             val builder = chain.request().newBuilder()
             prefs.getString("token", null)?.takeIf { it.isNotBlank() }?.let { token ->
@@ -80,12 +64,20 @@ object CaptainApiProvider {
             chain.proceed(builder.build())
         }
         val client = OkHttpClient.Builder().addInterceptor(authInterceptor).build()
-        api = Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(CaptainApi::class.java)
+        realApi = Retrofit.Builder().baseUrl(BASE_URL).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(CaptainApi::class.java)
+        api = object : CaptainApi by realApi {
+            override suspend fun acceptTrip(id: String): ApiEnvelope<Trip> {
+                val result = realApi.acceptTrip(id)
+                result.data?.let { trip ->
+                    if (result.success) {
+                        Handler(Looper.getMainLooper()).post {
+                            appContext.startActivity(Intent(appContext, CaptainTripActivity::class.java).putExtra(CaptainTripActivity.EXTRA_TRIP_ID, trip.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    }
+                }
+                return result
+            }
+        }
         initialized = true
     }
 }
