@@ -52,6 +52,11 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures { compose = true }
+
+    sourceSets["main"].java.exclude(
+        "**/CaptainActivity.kt",
+        "**/CaptainEarningsV2.kt"
+    )
 }
 
 dependencies {
