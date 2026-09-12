@@ -5,6 +5,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaAdmin">
         <activity
+            android:name=".AdminTripDetailsActivity"
+            android:exported="false" />
+        <activity
             android:name=".AdminActivityV2"
             android:exported="true">
             <intent-filter>
