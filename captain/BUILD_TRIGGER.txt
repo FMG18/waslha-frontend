@@ -1,0 +1,1 @@
+Trigger Captain Android release build using the corrected artifact upload workflow.
