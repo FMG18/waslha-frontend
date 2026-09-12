@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Waslha"
 include(":app")
 include(":captain")
+include(":admin")
