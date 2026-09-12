@@ -5,7 +5,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaAdmin">
         <activity
-            android:name=".AdminActivity"
+            android:name=".AdminActivityV2"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
