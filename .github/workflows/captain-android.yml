@@ -30,20 +30,48 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build Captain release APK
+      - name: Restore persistent Captain signing key
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_BASE64: ${{ secrets.WASLHA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WASLHA_KEYSTORE_BASE64"
+          printf '%s' "$WASLHA_KEYSTORE_BASE64" | base64 --decode > captain/waslha-captain-release.keystore
+          test -s captain/waslha-captain-release.keystore
+
+      - name: Build signed Captain release APK
+        env:
+          WASLHA_KEYSTORE_PATH: waslha-captain-release.keystore
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: gradle :captain:assembleRelease --stacktrace
 
-      - name: Locate Captain APK
+      - name: Verify Captain APK signature
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          apk="$(find captain/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+          test -n "$apk"
+          echo "Found signed APK: $apk"
+          apksigner=$(find "$ANDROID_HOME" -type f -name apksigner | head -n 1)
+          test -n "$apksigner"
+          "$apksigner" verify --verbose "$apk"
+
+      - name: Prepare Captain APK
         shell: bash
         run: |
-          set -e
-          apk="$(find captain/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          set -euo pipefail
+          apk="$(find captain/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
           if [ -z "$apk" ]; then
-            echo "No Captain APK found"
+            echo "No signed Captain APK found"
             find captain/build/outputs -type f -maxdepth 5 || true
             exit 1
           fi
-          echo "Found: $apk"
           cp "$apk" captain/build/outputs/apk/release/waslha-captain-beta.apk
 
       - name: Upload Captain APK
