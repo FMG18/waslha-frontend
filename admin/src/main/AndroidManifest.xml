@@ -5,18 +5,11 @@
         android:label="وصلها إدارة"
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaAdmin">
-        <activity
-            android:name=".AdminUserDetailsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".AdminDriverDetailsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".AdminTripDetailsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".AdminActivityV2"
-            android:exported="true">
+        <activity android:name=".AdminOperationsActivity" android:exported="false" />
+        <activity android:name=".AdminUserDetailsActivity" android:exported="false" />
+        <activity android:name=".AdminDriverDetailsActivity" android:exported="false" />
+        <activity android:name=".AdminTripDetailsActivity" android:exported="false" />
+        <activity android:name=".AdminActivityV2" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
