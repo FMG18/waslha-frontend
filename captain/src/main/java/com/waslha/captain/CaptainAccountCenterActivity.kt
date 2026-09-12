@@ -1,5 +1,6 @@
 package com.waslha.captain
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,11 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -66,10 +67,17 @@ private fun AccountCenter(onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        runCatching { CaptainApiProvider.api.me() }.onSuccess { driver = it.data }.onFailure { error = it.message }
-        driver?.id?.let { id ->
-            runCatching { CaptainApiProvider.api.notifications(id) }.onSuccess { notifications = it.data.orEmpty() }
-        }
+        runCatching { CaptainApiProvider.api.me() }
+            .onSuccess { response ->
+                driver = response.data
+                val id = response.data?.id.orEmpty()
+                if (id.isNotBlank()) {
+                    runCatching { CaptainApiProvider.api.notifications(id) }
+                        .onSuccess { notifications = it.data.orEmpty() }
+                        .onFailure { error = it.message ?: "تعذر تحميل الإشعارات" }
+                }
+            }
+            .onFailure { error = it.message ?: "تعذر تحميل الحساب" }
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -105,16 +113,25 @@ private fun AccountCenter(onBack: () -> Unit) {
         item { AccountRow("المركبة", listOfNotBlank(driver?.vehicle, driver?.plate).ifBlank { "بيانات المركبة غير مكتملة" }) {} }
         item { AccountRow("المستندات", "حالة المستندات والاعتماد") {} }
         item {
-            AccountRow("الإشعارات", if (notifications.isEmpty()) "لا توجد إشعارات جديدة" else "${notifications.count { !it.read }} غير مقروء") {}
+            AccountRow(
+                "الإشعارات",
+                if (notifications.isEmpty()) "لا توجد إشعارات جديدة" else "${notifications.count { !it.read }} غير مقروء"
+            ) {
+                context.startActivity(Intent(context, CaptainNotificationsActivity::class.java))
+            }
         }
         item { AccountSectionTitle("المساعدة") }
         item { AccountRow("الدعم", "تواصل مع فريق وصلها عند وجود مشكلة") {} }
         item { AccountRow("الأسئلة الشائعة", "إجابات عن العمل والرحلات والأرباح") {} }
         item { AccountSectionTitle("الإعدادات") }
         item { AccountRow("اللغة", "العربية") {} }
-        item { AccountRow("الإشعارات", "تنبيهات الرحلات والأخبار") {} }
+        item {
+            AccountRow("إشعارات الرحلات", "تنبيهات الرحلات والأخبار") {
+                context.startActivity(Intent(context, CaptainNotificationsActivity::class.java))
+            }
+        }
         item { AccountRow("الخصوصية والأمان", "حماية الحساب والجلسة") {} }
-        error?.let { message -> item { Text(message ?: "", color = ARed, fontSize = 10.sp) } }
+        error?.let { message -> item { Text(message, color = ARed, fontSize = 10.sp) } }
         item {
             TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                 Text("العودة", color = AGreen, fontWeight = FontWeight.Bold)
