@@ -5,8 +5,8 @@ on:
     paths:
       - 'captain/**'
       - 'build.gradle.kts'
-      - 'settings.gradle.kts'
       - 'gradle.properties'
+      - '.github/workflows/captain-android.yml'
   workflow_dispatch:
 
 permissions:
@@ -94,4 +94,4 @@ jobs:
           path: captain/build/outputs/apk/release/waslha-captain-beta.apk
           if-no-files-found: error
 
-# Trigger a fresh Captain release build
+# Captain-only release workflow: admin module is intentionally excluded.
