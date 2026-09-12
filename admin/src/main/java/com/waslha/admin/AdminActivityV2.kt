@@ -1,5 +1,6 @@
 package com.waslha.admin
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -85,14 +86,15 @@ private fun AdminLoginV2(onSuccess: (Session) -> Unit) {
         if (sent && code.length < 4) { error = "أدخل رمز التحقق"; return }
         loading = true; error = null
         scope.launch {
-            runCatching {
-                if (!sent) AdminApiProvider.api.requestCode(CodeRequest(phone.trim())) else AdminApiProvider.api.verifyCode(VerifyRequest(phone.trim(), code.trim()))
-            }.onSuccess { raw ->
-                if (raw.success) {
-                    if (!sent) { val r = raw as Envelope<CodeResponse>; sent = true; devCode = r.data?.devCode }
-                    else { val r = raw as Envelope<Session>; if (r.data?.role.equals("admin", true)) onSuccess(r.data!!) else error = "الحساب ليس حساب إدارة" }
-                } else error = raw.message ?: "تعذر تنفيذ الطلب"
-            }.onFailure { error = it.message ?: "تعذر الاتصال بالخادم" }
+            if (!sent) {
+                runCatching { AdminApiProvider.api.requestCode(CodeRequest(phone.trim())) }
+                    .onSuccess { r -> if (r.success) { sent = true; devCode = r.data?.devCode } else error = r.message ?: "تعذر إرسال الرمز" }
+                    .onFailure { error = it.message ?: "تعذر الاتصال بالخادم" }
+            } else {
+                runCatching { AdminApiProvider.api.verifyCode(VerifyRequest(phone.trim(), code.trim())) }
+                    .onSuccess { r -> if (r.success && r.data != null && r.data.role.equals("admin", true)) onSuccess(r.data) else error = r.message ?: "الحساب ليس حساب إدارة" }
+                    .onFailure { error = it.message ?: "تعذر تسجيل الدخول" }
+            }
             loading = false
         }
     }
@@ -132,7 +134,7 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
     }
     LaunchedEffect(Unit) { refresh(); while (true) { delay(10000); refresh() } }
     Scaffold(bottomBar = { NavigationBar(containerColor = White) { NavigationBarItem(tab == 0, { tab = 0 }, icon = { Text("⌂") }, label = { Text("الرئيسية") }); NavigationBarItem(tab == 1, { tab = 1 }, icon = { Text("↺") }, label = { Text("الرحلات") }); NavigationBarItem(tab == 2, { tab = 2 }, icon = { Text("●") }, label = { Text("الكباتن") }) } }) { padding ->
-        when (tab) { 0 -> AdminDashboard(Modifier.padding(padding), session.name, overview, loading, error); 1 -> AdminTrips(Modifier.padding(padding), trips); else -> AdminDrivers(Modifier.padding(padding), drivers) }
+        when (tab) { 0 -> AdminDashboard(Modifier.padding(padding), session.name, overview, loading, error); 1 -> AdminTrips(Modifier.padding(padding)); else -> AdminDrivers(Modifier.padding(padding), drivers) }
     }
 }
 
@@ -149,7 +151,19 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
     }
 }
 
-@Composable private fun AdminTrips(modifier: Modifier, trips: List<AdminTripDto>) { LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { Text("إدارة الرحلات", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("كل الرحلات من الـBackend", color = Muted, fontSize = 11.sp) }; items(trips, key = { it.id }) { AdminTripRow(it) } } }
+@Composable private fun AdminTrips(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var trips by remember { mutableStateOf<List<AdminTripDto>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { runCatching { AdminApiProvider.api.trips() }.onSuccess { trips = it.data.orEmpty() }; loading = false }
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text("إدارة الرحلات", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("اضغط على أي رحلة للتحكم بها", color = Muted, fontSize = 11.sp) }
+        if (loading) item { CircularProgressIndicator() }
+        items(trips, key = { it.id }) { t -> AdminTripRow(t) { context.startActivity(Intent(context, AdminTripDetailsActivity::class.java).putExtra(AdminTripDetailsActivity.EXTRA_TRIP_ID, t.id)) } }
+    }
+}
+
 @Composable private fun AdminDrivers(modifier: Modifier, drivers: List<AdminDriverDto>) { LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { Text("الكباتن", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("الحالة الحالية للكباتن", color = Muted, fontSize = 11.sp) }; items(drivers, key = { it.id }) { d -> Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) { Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Text("ك", color = Green, fontWeight = FontWeight.Black, fontSize = 20.sp); Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(d.name.ifBlank { d.id }, color = Ink, fontWeight = FontWeight.Black); Text("${d.type} • ${d.rating}", color = Muted, fontSize = 9.sp) }; Text(if (d.available) "متصل" else "غير متصل", color = if (d.available) Green else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold) } } } } }
-@Composable private fun AdminTripRow(t: AdminTripDto) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) { Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("رحلة #${t.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Black); Text("زبون: ${t.customerId}", color = Muted, fontSize = 9.sp); Text("كابتن: ${t.driver?.name ?: "غير معين"}", color = Muted, fontSize = 9.sp) }; Column(horizontalAlignment = Alignment.End) { Text(t.status, color = when (t.status) { "in_progress" -> Green; "searching" -> Amber; else -> Muted }, fontSize = 9.sp, fontWeight = FontWeight.Bold); Text("${t.estimatedFare} ${t.currency}", color = Ink, fontWeight = FontWeight.Black, fontSize = 12.sp) } } } }
+@Composable private fun AdminTripRow(t: AdminTripDto, onClick: (() -> Unit)? = null) { Card(Modifier.fillMaxWidth().clickable(enabled = onClick != null) { onClick?.invoke() }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) { Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("رحلة #${t.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Black); Text("زبون: ${t.customerId}", color = Muted, fontSize = 9.sp); Text("كابتن: ${t.driver?.name ?: "غير معين"}", color = Muted, fontSize = 9.sp) }; Column(horizontalAlignment = Alignment.End) { Text(t.status, color = when (t.status) { "in_progress" -> Green; "searching" -> Amber; else -> Muted }, fontSize = 9.sp, fontWeight = FontWeight.Bold); Text("${t.estimatedFare} ${t.currency}", color = Ink, fontWeight = FontWeight.Black, fontSize = 12.sp) } } } }
 @Composable private fun AdminStat(title: String, value: String, accent: Color, modifier: Modifier) { Surface(modifier, shape = RoundedCornerShape(18.dp), color = White) { Column(Modifier.padding(12.dp)) { Text(title, color = Muted, fontSize = 8.sp); Text(value, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Black) } } }
