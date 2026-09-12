@@ -40,8 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,7 +117,6 @@ private fun AdminLoginV2(onSuccess: (Session) -> Unit) {
 private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
     val scope = rememberCoroutineScope()
     var overview by remember { mutableStateOf<AdminOverview?>(null) }
-    var trips by remember { mutableStateOf<List<AdminTripDto>>(emptyList()) }
     var drivers by remember { mutableStateOf<List<AdminDriverDto>>(emptyList()) }
     var tab by remember { mutableStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -126,14 +125,23 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
         scope.launch {
             loading = true; error = null
             runCatching { AdminApiProvider.api.overview() }.onSuccess { if (it.success) overview = it.data else error = it.message }
-            runCatching { AdminApiProvider.api.trips() }.onSuccess { if (it.success) trips = it.data.orEmpty() }
             runCatching { AdminApiProvider.api.drivers() }.onSuccess { if (it.success) drivers = it.data.orEmpty() }
             loading = false
         }
     }
     LaunchedEffect(Unit) { refresh(); while (true) { delay(10000); refresh() } }
-    Scaffold(bottomBar = { NavigationBar(containerColor = White) { NavigationBarItem(tab == 0, { tab = 0 }, icon = { Text("⌂") }, label = { Text("الرئيسية") }); NavigationBarItem(tab == 1, { tab = 1 }, icon = { Text("↺") }, label = { Text("الرحلات") }); NavigationBarItem(tab == 2, { tab = 2 }, icon = { Text("●") }, label = { Text("الكباتن") }) } }) { padding ->
-        when (tab) { 0 -> AdminDashboard(Modifier.padding(padding), session.name, overview, loading, error); 1 -> AdminTrips(Modifier.padding(padding)); else -> AdminDrivers(Modifier.padding(padding), drivers) }
+    Scaffold(bottomBar = { NavigationBar(containerColor = White) {
+        NavigationBarItem(tab == 0, { tab = 0 }, icon = { Text("⌂") }, label = { Text("الرئيسية") })
+        NavigationBarItem(tab == 1, { tab = 1 }, icon = { Text("↺") }, label = { Text("الرحلات") })
+        NavigationBarItem(tab == 2, { tab = 2 }, icon = { Text("●") }, label = { Text("الكباتن") })
+        NavigationBarItem(tab == 3, { tab = 3 }, icon = { Text("👥") }, label = { Text("الزبائن") })
+    } }) { padding ->
+        when (tab) {
+            0 -> AdminDashboard(Modifier.padding(padding), session.name, overview, loading, error)
+            1 -> AdminTrips(Modifier.padding(padding))
+            2 -> AdminDrivers(Modifier.padding(padding), drivers)
+            else -> AdminUsers(Modifier.padding(padding))
+        }
     }
 }
 
@@ -172,6 +180,34 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
                     Text("ك", color = Green, fontWeight = FontWeight.Black, fontSize = 20.sp)
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(d.name.ifBlank { d.id }, color = Ink, fontWeight = FontWeight.Black); Text("${d.type} • ${d.rating}", color = Muted, fontSize = 9.sp) }
                     Text(if (d.available) "متصل" else "غير متصل", color = if (d.available) Green else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun AdminUsers(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var query by remember { mutableStateOf("") }
+    var users by remember { mutableStateOf<List<AdminUserDto>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    fun load() { loading = true; kotlinx.coroutines.MainScope().launch { runCatching { AdminApiProvider.api.users(query) }.onSuccess { users = it.data.orEmpty() }; loading = false } }
+    LaunchedEffect(Unit) { load() }
+    Column(modifier.fillMaxSize().padding(16.dp)) {
+        Text("الزبائن", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
+        Text("بحث بالاسم أو الرقم أو البريد", color = Muted, fontSize = 11.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(query, { query = it }, Modifier.weight(1f), singleLine = true, label = { Text("بحث") })
+            TextButton(onClick = { load() }) { Text("بحث", color = Green) }
+        }
+        if (loading) CircularProgressIndicator(Modifier.padding(12.dp))
+        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)) {
+            items(users, key = { it.id }) { u ->
+                Card(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(context, AdminUserDetailsActivity::class.java).putExtra(AdminUserDetailsActivity.EXTRA_USER_ID, u.id)) }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) {
+                    Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("ز", color = Green, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(u.name.ifBlank { "زبون ${u.id.takeLast(6)}" }, color = Ink, fontWeight = FontWeight.Black); Text(u.phone.ifBlank { u.email }, color = Muted, fontSize = 9.sp); Text("${u.tripsCount} رحلة", color = Muted, fontSize = 9.sp) }
+                    }
                 }
             }
         }
