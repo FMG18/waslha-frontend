@@ -33,9 +33,22 @@ jobs:
       - name: Build Captain release APK
         run: gradle :captain:assembleRelease --stacktrace
 
+      - name: Locate Captain APK
+        shell: bash
+        run: |
+          set -e
+          apk="$(find captain/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [ -z "$apk" ]; then
+            echo "No Captain APK found"
+            find captain/build/outputs -type f -maxdepth 5 || true
+            exit 1
+          fi
+          echo "Found: $apk"
+          cp "$apk" captain/build/outputs/apk/release/waslha-captain-beta.apk
+
       - name: Upload Captain APK
         uses: actions/upload-artifact@v4
         with:
           name: waslha-captain-beta
-          path: captain/build/outputs/apk/release/captain-release.apk
+          path: captain/build/outputs/apk/release/waslha-captain-beta.apk
           if-no-files-found: error
