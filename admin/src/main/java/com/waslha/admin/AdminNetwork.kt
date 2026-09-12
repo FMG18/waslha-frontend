@@ -30,6 +30,9 @@ data class AdminCancelRequest(val reason: String = "admin_cancel")
 data class AdminAvailabilityRequest(val available: Boolean)
 data class AdminUserDto(val id: String, val phone: String = "", val name: String = "", val email: String = "", val role: String = "customer", val createdAt: Long = 0L, val tripsCount: Int = 0)
 data class AdminUserDetailsDto(val id: String, val phone: String = "", val name: String = "", val email: String = "", val role: String = "customer", val createdAt: Long = 0L, val updatedAt: Long = 0L, val tripsCount: Int = 0, val trips: List<AdminTripDto> = emptyList())
+data class AdminReportDto(val period: String = "all", val totalTrips: Int = 0, val completedTrips: Int = 0, val cancelledTrips: Int = 0, val activeTrips: Int = 0, val totalRevenue: Int = 0, val averageFare: Double = 0.0, val totalCustomers: Int = 0, val totalDrivers: Int = 0, val onlineDrivers: Int = 0)
+data class AdminNotificationRequest(val userId: String? = null, val title: String, val body: String, val type: String = "admin")
+data class AdminNotificationResult(val sent: Int = 0)
 
 interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
@@ -45,6 +48,8 @@ interface AdminApi {
     @PATCH("api/v1/admin/drivers/{id}/availability") suspend fun setDriverAvailability(@Path("id") id: String, @Body body: AdminAvailabilityRequest): Envelope<AdminDriverDto>
     @GET("api/v1/admin/users") suspend fun users(@Query("q") query: String = ""): Envelope<List<AdminUserDto>>
     @GET("api/v1/admin/users/{id}") suspend fun user(@Path("id") id: String): Envelope<AdminUserDetailsDto>
+    @GET("api/v1/admin/report") suspend fun report(@Query("period") period: String = "all"): Envelope<AdminReportDto>
+    @POST("api/v1/admin/notifications") suspend fun notify(@Body body: AdminNotificationRequest): Envelope<AdminNotificationResult>
 }
 
 object AdminApiProvider {
