@@ -93,3 +93,5 @@ jobs:
           name: waslha-captain-beta
           path: captain/build/outputs/apk/release/waslha-captain-beta.apk
           if-no-files-found: error
+
+# Trigger a fresh Captain release build
