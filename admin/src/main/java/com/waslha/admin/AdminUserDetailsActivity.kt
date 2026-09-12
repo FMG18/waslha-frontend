@@ -1,5 +1,6 @@
 package com.waslha.admin
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +44,8 @@ class AdminUserDetailsActivity : ComponentActivity() {
 @Composable
 private fun AdminUserDetailsScreen(id: String, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var user by remember { mutableStateOf<AdminUserDto?>(null) }
+    val context = LocalContext.current
+    var user by remember { mutableStateOf<AdminUserDetailsDto?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -73,6 +76,9 @@ private fun AdminUserDetailsScreen(id: String, onBack: () -> Unit) {
                         Text("البريد: ${u.email.ifBlank { "غير متوفر" }}")
                         Text("عدد الرحلات: ${u.tripsCount}")
                     }
+                }
+                item {
+                    Button(onClick = { context.startActivity(Intent(context, AdminOperationsActivity::class.java)) }) { Text("عمليات الإدارة") }
                 }
                 item { Button(onClick = { reload() }) { Text("تحديث") } }
             }
