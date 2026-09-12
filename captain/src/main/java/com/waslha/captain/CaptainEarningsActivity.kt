@@ -1,5 +1,6 @@
 package com.waslha.captain
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -68,6 +69,7 @@ class CaptainEarningsActivity : ComponentActivity() {
 
 @Composable
 private fun CaptainEarningsScreen(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var trips by remember { mutableStateOf<List<Trip>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -107,14 +109,14 @@ private fun CaptainEarningsScreen(onBack: () -> Unit) {
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(42.dp).background(EW, CircleShape).clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) { Text("‹", color = EI, fontSize = 27.sp) }
+                Box(Modifier.size(42.dp).background(EW, CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) { Text("‹", color = EI, fontSize = 27.sp) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("الأرباح والرحلات", color = EI, fontSize = 23.sp, fontWeight = FontWeight.Black)
                     Text("ملخص أدائك وسجل رحلاتك", color = EX, fontSize = 10.sp)
+                }
+                Box(Modifier.background(EM, RoundedCornerShape(15.dp)).clickable { context.startActivity(Intent(context, CaptainAccountCenterActivity::class.java)) }.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                    Text("حسابي", color = ED, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -133,29 +135,14 @@ private fun CaptainEarningsScreen(onBack: () -> Unit) {
                 SummaryTile("متوسط الرحلة", "${money(average)}", Modifier.weight(1f))
             }
         }
-        item {
-            Text("سجل الرحلات", color = EI, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        }
+        item { Text("سجل الرحلات", color = EI, fontSize = 18.sp, fontWeight = FontWeight.Black) }
         error?.let { message ->
-            item {
-                Surface(Modifier.fillMaxWidth(), color = Color(0xFFFFE9E7), shape = RoundedCornerShape(14.dp)) {
-                    Text(message, Modifier.padding(12.dp), color = ER, fontSize = 10.sp)
-                }
-            }
+            item { Surface(Modifier.fillMaxWidth(), color = Color(0xFFFFE9E7), shape = RoundedCornerShape(14.dp)) { Text(message, Modifier.padding(12.dp), color = ER, fontSize = 10.sp) } }
         }
         if (trips.isEmpty()) {
-            item {
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(EW)) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("لا توجد رحلات حتى الآن", color = EI, fontWeight = FontWeight.Black)
-                        Text("ستظهر الرحلات هنا بعد قبولها", color = EX, fontSize = 10.sp)
-                    }
-                }
-            }
+            item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(EW)) { Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("لا توجد رحلات حتى الآن", color = EI, fontWeight = FontWeight.Black); Text("ستظهر الرحلات هنا بعد قبولها", color = EX, fontSize = 10.sp) } } }
         } else {
-            items(trips, key = { it.id }) { trip ->
-                TripHistoryCard(trip)
-            }
+            items(trips, key = { it.id }) { trip -> TripHistoryCard(trip) }
         }
     }
 }
@@ -163,10 +150,7 @@ private fun CaptainEarningsScreen(onBack: () -> Unit) {
 @Composable
 private fun SummaryTile(title: String, value: String, modifier: Modifier) {
     Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(EW)) {
-        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(title, color = EX, fontSize = 9.sp)
-            Text(value, color = EI, fontSize = 18.sp, fontWeight = FontWeight.Black)
-        }
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(title, color = EX, fontSize = 9.sp); Text(value, color = EI, fontSize = 18.sp, fontWeight = FontWeight.Black) }
     }
 }
 
@@ -176,52 +160,22 @@ private fun TripHistoryCard(trip: Trip) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(EW)) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("رحلة #${trip.id.takeLast(6)}", color = EI, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                    Text(statusText(trip.status), color = if (completed) EG else EX, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("${money(trip.estimatedFare)}", color = EG, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                    Text(trip.currency, color = EX, fontSize = 8.sp)
-                }
+                Column(Modifier.weight(1f)) { Text("رحلة #${trip.id.takeLast(6)}", color = EI, fontSize = 14.sp, fontWeight = FontWeight.Black); Text(statusText(trip.status), color = if (completed) EG else EX, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                Column(horizontalAlignment = Alignment.End) { Text("${money(trip.estimatedFare)}", color = EG, fontSize = 15.sp, fontWeight = FontWeight.Black); Text(trip.currency, color = EX, fontSize = 8.sp) }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Pill("${trip.distanceKm} كم")
-                Pill("${trip.durationMin} دقيقة")
-                Pill(if (trip.paymentMethod == "cash") "نقدي" else trip.paymentMethod)
-            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) { Pill("${trip.distanceKm} كم"); Pill("${trip.durationMin} دقيقة"); Pill(if (trip.paymentMethod == "cash") "نقدي" else trip.paymentMethod) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).background(EG, CircleShape))
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("الانطلاق", color = EX, fontSize = 8.sp)
-                    Text(coords(trip.pickup), color = EI, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-                Box(Modifier.size(8.dp).background(ER, CircleShape))
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("الوجهة", color = EX, fontSize = 8.sp)
-                    Text(coords(trip.destination), color = EI, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
+                Box(Modifier.size(8.dp).background(EG, CircleShape)); Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) { Text("الانطلاق", color = EX, fontSize = 8.sp); Text(coords(trip.pickup), color = EI, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                Box(Modifier.size(8.dp).background(ER, CircleShape)); Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) { Text("الوجهة", color = EX, fontSize = 8.sp); Text(coords(trip.destination), color = EI, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
             }
         }
     }
 }
 
 @Composable
-private fun Pill(text: String) {
-    Surface(color = EM, shape = RoundedCornerShape(999.dp)) {
-        Text(text, Modifier.padding(horizontal = 9.dp, vertical = 6.dp), color = ED, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
+private fun Pill(text: String) { Surface(color = EM, shape = RoundedCornerShape(999.dp)) { Text(text, Modifier.padding(horizontal = 9.dp, vertical = 6.dp), color = ED, fontSize = 8.sp, fontWeight = FontWeight.Bold) } }
 private fun money(value: Int): String = "%,d".format(value)
 private fun coords(c: Coordinates): String = "${String.format("%.4f", c.lat)} ، ${String.format("%.4f", c.lng)}"
-private fun statusText(s: String): String = when (s) {
-    "completed" -> "مكتملة"
-    "driver_assigned" -> "تم قبولها"
-    "arriving" -> "في الطريق للراكب"
-    "in_progress" -> "قيد التنفيذ"
-    "searching" -> "بانتظار كابتن"
-    else -> s
-}
+private fun statusText(s: String): String = when (s) { "completed" -> "مكتملة"; "driver_assigned" -> "تم قبولها"; "arriving" -> "في الطريق للراكب"; "in_progress" -> "قيد التنفيذ"; "searching" -> "بانتظار كابتن"; else -> s }
