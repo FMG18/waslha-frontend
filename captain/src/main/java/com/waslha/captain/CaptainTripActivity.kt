@@ -1,5 +1,6 @@
 package com.waslha.captain
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -64,6 +65,7 @@ class CaptainTripActivity : ComponentActivity() {
 @Composable
 private fun TripScreen(id: String, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     var trip by remember { mutableStateOf<Trip?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -103,6 +105,21 @@ private fun TripScreen(id: String, onFinish: () -> Unit) {
         item { MapCard(t) }
         item { Progress(t.status) }
         item { Details(t) }
+        item {
+            Text("إدارة الحساب", color = INK, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(7.dp))
+            Box(
+                Modifier.fillMaxWidth().background(M, RoundedCornerShape(17.dp)).clickable {
+                    context.startActivity(Intent(context, CaptainEarningsActivity::class.java))
+                }.padding(14.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Column {
+                    Text("الأرباح وسجل الرحلات", color = GD, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Text("راجع رحلاتك المكتملة ودخلك من مكان واحد", color = MUTED, fontSize = 9.sp)
+                }
+            }
+        }
         error?.let { item { Surface(Modifier.fillMaxWidth(), color = Color(0xFFFFE9E7), shape = RoundedCornerShape(14.dp)) { Text(it, Modifier.padding(12.dp), color = RED, fontSize = 10.sp) } } }
         item {
             Box(Modifier.fillMaxWidth().background(G, RoundedCornerShape(18.dp)).clickable(enabled = !busy && next != null) {
@@ -136,6 +153,7 @@ private fun TripScreen(id: String, onFinish: () -> Unit) {
         Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("مراحل الرحلة", color = INK, fontSize = 14.sp, fontWeight = FontWeight.Black)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { for (i in 1..4) { Box(Modifier.size(27.dp).background(if (i <= s) G else BG, CircleShape), contentAlignment = Alignment.Center) { Text(if (i < s) "✓" else i.toString(), color = if (i <= s) WHITE else MUTED, fontSize = 10.sp, fontWeight = FontWeight.Bold) }; if (i < 4) Box(Modifier.weight(1f).height(2.dp).background(if (i < s) G else Color(0xFFE2E9E5))) } }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("قبول", color = MUTED, fontSize = 8.sp); Text("في الطريق", color = MUTED, fontSize = 8.sp); Text("مع الراكب", color = MUTED, fontSize = 8.sp); Text("مكتملة", color = MUTED, fontSize = 8.sp) }
         }
     }
 }
