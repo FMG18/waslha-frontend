@@ -1,9 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
         android:label="وصلها إدارة"
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaAdmin">
+        <activity
+            android:name=".AdminUserDetailsActivity"
+            android:exported="false" />
         <activity
             android:name=".AdminDriverDetailsActivity"
             android:exported="false" />
