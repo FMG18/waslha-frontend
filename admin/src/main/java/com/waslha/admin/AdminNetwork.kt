@@ -21,11 +21,12 @@ data class Session(val userId: String, val phone: String = "", val role: String 
 data class AdminTotals(val trips: Int = 0, val activeTrips: Int = 0, val waitingTrips: Int = 0, val completedTrips: Int = 0, val drivers: Int = 0, val onlineDrivers: Int = 0, val revenue: Int = 0)
 data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
 data class AdminCoordinates(val lat: Double = 0.0, val lng: Double = 0.0)
-data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0)
+data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val phone: String? = null)
 data class AdminOverview(val totals: AdminTotals, val latestTrips: List<AdminTripDto> = emptyList())
 data class AdminDriverAssignRequest(val driverId: String)
 data class AdminStatusRequest(val status: String)
 data class AdminCancelRequest(val reason: String = "admin_cancel")
+data class AdminAvailabilityRequest(val available: Boolean)
 
 interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
@@ -37,6 +38,8 @@ interface AdminApi {
     @PATCH("api/v1/admin/trips/{id}/status") suspend fun updateStatus(@Path("id") id: String, @Body body: AdminStatusRequest): Envelope<AdminTripDto>
     @POST("api/v1/admin/trips/{id}/cancel") suspend fun cancelTrip(@Path("id") id: String, @Body body: AdminCancelRequest): Envelope<AdminTripDto>
     @GET("api/v1/admin/drivers") suspend fun drivers(): Envelope<List<AdminDriverDto>>
+    @GET("api/v1/admin/drivers/{id}") suspend fun driver(@Path("id") id: String): Envelope<AdminDriverDto>
+    @PATCH("api/v1/admin/drivers/{id}/availability") suspend fun setDriverAvailability(@Path("id") id: String, @Body body: AdminAvailabilityRequest): Envelope<AdminDriverDto>
 }
 
 object AdminApiProvider {
