@@ -8,6 +8,7 @@
         android:label="وصلها كابتن"
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaCaptain">
+        <activity android:name=".CaptainNotificationsActivity" android:exported="false" />
         <activity android:name=".CaptainAccountCenterActivity" android:exported="false" />
         <activity android:name=".CaptainEarningsActivity" android:exported="false" />
         <activity android:name=".CaptainTripActivity" android:exported="false" />
