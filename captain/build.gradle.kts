@@ -22,12 +22,19 @@ android {
             val keystorePassword = System.getenv("WASLHA_KEYSTORE_PASSWORD")
             val keyAlias = System.getenv("WASLHA_KEY_ALIAS")
             val keyPassword = System.getenv("WASLHA_KEY_PASSWORD")
-            if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
-                storeFile = file(keystorePath)
-                storePassword = keystorePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
-            }
+
+            require(!keystorePath.isNullOrBlank()) { "WASLHA_KEYSTORE_PATH is missing" }
+            require(!keystorePassword.isNullOrBlank()) { "WASLHA_KEYSTORE_PASSWORD is missing" }
+            require(!keyAlias.isNullOrBlank()) { "WASLHA_KEY_ALIAS is missing" }
+            require(!keyPassword.isNullOrBlank()) { "WASLHA_KEY_PASSWORD is missing" }
+
+            val keystoreFile = file(keystorePath)
+            require(keystoreFile.isFile) { "Captain release keystore not found: ${keystoreFile.absolutePath}" }
+
+            storeFile = keystoreFile
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
         }
     }
 
