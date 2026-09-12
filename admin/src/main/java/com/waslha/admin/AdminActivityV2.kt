@@ -40,9 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -153,7 +152,6 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
 
 @Composable private fun AdminTrips(modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
     var trips by remember { mutableStateOf<List<AdminTripDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { runCatching { AdminApiProvider.api.trips() }.onSuccess { trips = it.data.orEmpty() }; loading = false }
@@ -164,6 +162,21 @@ private fun AdminHomeV2(session: AdminSessionStore, onLogout: () -> Unit) {
     }
 }
 
-@Composable private fun AdminDrivers(modifier: Modifier, drivers: List<AdminDriverDto>) { LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { Text("الكباتن", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("الحالة الحالية للكباتن", color = Muted, fontSize = 11.sp) }; items(drivers, key = { it.id }) { d -> Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) { Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Text("ك", color = Green, fontWeight = FontWeight.Black, fontSize = 20.sp); Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(d.name.ifBlank { d.id }, color = Ink, fontWeight = FontWeight.Black); Text("${d.type} • ${d.rating}", color = Muted, fontSize = 9.sp) }; Text(if (d.available) "متصل" else "غير متصل", color = if (d.available) Green else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold) } } } } }
+@Composable private fun AdminDrivers(modifier: Modifier, drivers: List<AdminDriverDto>) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text("الكباتن", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("الحالة الحالية للكباتن", color = Muted, fontSize = 11.sp) }
+        items(drivers, key = { it.id }) { d ->
+            Card(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(context, AdminDriverDetailsActivity::class.java).putExtra(AdminDriverDetailsActivity.EXTRA_DRIVER_ID, d.id)) }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) {
+                Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("ك", color = Green, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(d.name.ifBlank { d.id }, color = Ink, fontWeight = FontWeight.Black); Text("${d.type} • ${d.rating}", color = Muted, fontSize = 9.sp) }
+                    Text(if (d.available) "متصل" else "غير متصل", color = if (d.available) Green else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
 @Composable private fun AdminTripRow(t: AdminTripDto, onClick: (() -> Unit)? = null) { Card(Modifier.fillMaxWidth().clickable(enabled = onClick != null) { onClick?.invoke() }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(White)) { Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("رحلة #${t.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Black); Text("زبون: ${t.customerId}", color = Muted, fontSize = 9.sp); Text("كابتن: ${t.driver?.name ?: "غير معين"}", color = Muted, fontSize = 9.sp) }; Column(horizontalAlignment = Alignment.End) { Text(t.status, color = when (t.status) { "in_progress" -> Green; "searching" -> Amber; else -> Muted }, fontSize = 9.sp, fontWeight = FontWeight.Bold); Text("${t.estimatedFare} ${t.currency}", color = Ink, fontWeight = FontWeight.Black, fontSize = 12.sp) } } } }
 @Composable private fun AdminStat(title: String, value: String, accent: Color, modifier: Modifier) { Surface(modifier, shape = RoundedCornerShape(18.dp), color = White) { Column(Modifier.padding(12.dp)) { Text(title, color = Muted, fontSize = 8.sp); Text(value, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Black) } } }
