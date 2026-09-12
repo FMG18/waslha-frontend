@@ -1,0 +1,53 @@
+name: Waslha Admin Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/admin-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build Admin release APK
+        run: gradle :admin:assembleRelease --stacktrace
+
+      - name: Prepare Admin APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find admin/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+          test -n "$apk" || { echo "No Admin APK produced"; find admin/build/outputs -type f -maxdepth 5 || true; exit 1; }
+          cp "$apk" admin/build/outputs/apk/release/waslha-admin-beta.apk
+
+      - name: Upload Admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: waslha-admin-beta
+          path: admin/build/outputs/apk/release/waslha-admin-beta.apk
+          if-no-files-found: error
+
+# Admin-only build. Customer and Captain artifacts are never produced here.
