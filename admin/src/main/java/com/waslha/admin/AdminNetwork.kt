@@ -10,6 +10,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 private const val BASE_URL = "https://waslha-backend.vercel.app/"
 
@@ -27,6 +28,8 @@ data class AdminDriverAssignRequest(val driverId: String)
 data class AdminStatusRequest(val status: String)
 data class AdminCancelRequest(val reason: String = "admin_cancel")
 data class AdminAvailabilityRequest(val available: Boolean)
+data class AdminUserDto(val id: String, val phone: String = "", val name: String = "", val email: String = "", val role: String = "customer", val createdAt: Long = 0L, val tripsCount: Int = 0)
+data class AdminUserDetailsDto(val id: String, val phone: String = "", val name: String = "", val email: String = "", val role: String = "customer", val createdAt: Long = 0L, val updatedAt: Long = 0L, val tripsCount: Int = 0, val trips: List<AdminTripDto> = emptyList())
 
 interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
@@ -40,6 +43,8 @@ interface AdminApi {
     @GET("api/v1/admin/drivers") suspend fun drivers(): Envelope<List<AdminDriverDto>>
     @GET("api/v1/admin/drivers/{id}") suspend fun driver(@Path("id") id: String): Envelope<AdminDriverDto>
     @PATCH("api/v1/admin/drivers/{id}/availability") suspend fun setDriverAvailability(@Path("id") id: String, @Body body: AdminAvailabilityRequest): Envelope<AdminDriverDto>
+    @GET("api/v1/admin/users") suspend fun users(@Query("q") query: String = ""): Envelope<List<AdminUserDto>>
+    @GET("api/v1/admin/users/{id}") suspend fun user(@Path("id") id: String): Envelope<AdminUserDetailsDto>
 }
 
 object AdminApiProvider {
