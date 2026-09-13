@@ -5,6 +5,7 @@
         android:label="وصلها إدارة"
         android:supportsRtl="true"
         android:theme="@style/Theme.WaslhaAdmin">
+        <activity android:name=".AdminLiveMapActivity" android:exported="false" />
         <activity android:name=".AdminOperationsActivity" android:exported="false" />
         <activity android:name=".AdminUserDetailsActivity" android:exported="false" />
         <activity android:name=".AdminDriverDetailsActivity" android:exported="false" />
