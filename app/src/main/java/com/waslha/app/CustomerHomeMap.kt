@@ -89,6 +89,11 @@ fun CustomerHomeMap(
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
 
+    val estimatedFareLong = estimate?.estimatedFare?.toLong()
+    val walletCanPay = estimatedFareLong != null && (walletBalance ?: 0L) >= estimatedFareLong
+    val canRequest = !requesting && destination != null &&
+        (paymentMethod == "cash" || walletCanPay)
+
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = 280.dp,
@@ -110,9 +115,7 @@ fun CustomerHomeMap(
                 Text("وين نوصلك؟", color = Color(0xFF12201B), fontSize = 22.sp, fontWeight = FontWeight.Black)
                 Text("اختر نقطة الانطلاق والوجهة ثم نوع السيارة", color = Color(0xFF6D7A75), fontSize = 11.sp)
                 SheetRouteRow("من", pickupLabel, Icons.Default.MyLocation, locationLoading, onRefreshLocation)
-                SheetRouteRow("إلى", destination?.title ?: "حدد وجهتك على الخريطة", Icons.Default.LocationOn, false) {
-                    // The map remains interactive behind the sheet; selecting a destination is handled by map taps.
-                }
+                SheetRouteRow("إلى", destination?.title ?: "حدد وجهتك على الخريطة", Icons.Default.LocationOn)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
                     items(v2Vehicles, key = { it.id }) { option ->
                         VehicleChip(option, option.id == vehicle.id) { onVehicle(option) }
@@ -126,7 +129,12 @@ fun CustomerHomeMap(
                     Text("رصيد المحفظة: ${walletBalance ?: 0} ل.س", color = Color(0xFF087F5B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
                 if (estimate != null || estimateLoading) {
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFF5F8F6)), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(Color(0xFFF5F8F6)),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CreditCard, null, tint = Color(0xFF087F5B), modifier = Modifier.size(19.dp))
                             Box(Modifier.width(8.dp))
@@ -143,7 +151,7 @@ fun CustomerHomeMap(
                 if (!error.isNullOrBlank()) Text(error, color = Color(0xFFB42318), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Button(
                     onClick = { onRequest(paymentMethod) },
-                    enabled = !requesting && destination != null && (paymentMethod == "cash" || (walletBalance ?: 0L) >= (estimate?.estimatedFare ?: Long.MAX_VALUE)),
+                    enabled = canRequest,
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(17.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6F4DBA))
@@ -176,10 +184,9 @@ private fun SheetRouteRow(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     loading: Boolean,
-    onClick: () -> Unit
 ) {
     Card(
-        Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color(0xFFF5F8F6)),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, Color(0xFFDDE5E1)),
@@ -202,11 +209,12 @@ private fun SheetRouteRow(
 @Composable
 private fun VehicleChip(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
+        modifier = Modifier,
         colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF5F7F6)),
         shape = RoundedCornerShape(15.dp),
         border = BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)),
-        elevation = CardDefaults.cardElevation(0.dp),
-        onClick = onClick
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.DirectionsCar, null, tint = Color(0xFF087F5B), modifier = Modifier.size(18.dp))
@@ -219,12 +227,12 @@ private fun VehicleChip(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Un
 @Composable
 private fun PaymentChip(title: String, selected: Boolean, balance: Long?, onClick: () -> Unit) {
     Card(
-        Modifier.fillMaxWidth(),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF6F8F7)),
         shape = RoundedCornerShape(15.dp),
         border = BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)),
-        elevation = CardDefaults.cardElevation(0.dp),
-        onClick = onClick
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(Modifier.padding(horizontal = 7.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = onClick)
