@@ -90,67 +90,45 @@ jobs:
               lines.insert(idx, import_line)
               p.write_text(''.join(lines), encoding='utf-8')
 
-          replace_once(
-              'app/src/main/java/com/waslha/app/TaxiBookingActivity.kt',
-              'import androidx.compose.foundation.layout.weight\n',
-              ''
-          )
-          replace_once(
-              'app/src/main/java/com/waslha/app/TaxiBookingActivity.kt',
-              'private fun BottomItem(icon:',
-              'private fun RowScope.BottomItem(icon:'
-          )
-          ensure_import(
-              'app/src/main/java/com/waslha/app/TaxiBookingActivity.kt',
-              'import androidx.compose.foundation.layout.RowScope\n'
-          )
+          # Existing compatibility fixes.
+          replace_once('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', 'import androidx.compose.foundation.layout.weight\n', '')
+          replace_once('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', 'private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:')
+          ensure_import('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', 'import androidx.compose.foundation.layout.RowScope\n')
+          ensure_import('app/src/main/java/com/waslha/app/TripExperience.kt', 'import androidx.compose.material.icons.filled.MyLocation\n')
+          replace_once('app/src/main/java/com/waslha/app/PassengerFeatures.kt', 'import androidx.compose.foundation.layout.weight\n', '')
+          replace_once('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }', 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }')
+          replace_once('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', 'val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)', 'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)')
+          replace_once('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', '"1.4.5"', 'BuildConfig.VERSION_NAME')
+          replace_once('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', '"v1.4.5"', '"v${BuildConfig.VERSION_NAME}"')
+          replace_once('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt', 'import com.mapbox.maps.MapboxOptions\n', 'import com.mapbox.common.MapboxOptions\n')
+          replace_once('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt', 'Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick),', 'Card(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),')
+          ensure_import('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt', 'import androidx.compose.ui.text.font.FontWeight\n')
 
-          ensure_import(
-              'app/src/main/java/com/waslha/app/TripExperience.kt',
-              'import androidx.compose.material.icons.filled.MyLocation\n'
-          )
-
-          replace_once(
-              'app/src/main/java/com/waslha/app/PassengerFeatures.kt',
-              'import androidx.compose.foundation.layout.weight\n',
-              ''
-          )
-
-          replace_once(
-              'app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt',
-              'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }',
-              'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'
-          )
-          replace_once(
-              'app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt',
-              'val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)',
-              'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'
-          )
-          replace_once(
-              'app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt',
-              '"1.4.5"',
-              'BuildConfig.VERSION_NAME'
-          )
-          replace_once(
-              'app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt',
-              '"v1.4.5"',
-              '"v${BuildConfig.VERSION_NAME}"'
-          )
-
-          replace_once(
-              'app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt',
-              'import com.mapbox.maps.MapboxOptions\n',
-              'import com.mapbox.common.MapboxOptions\n'
-          )
-          replace_once(
-              'app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt',
-              'Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick),',
-              'Card(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),'
-          )
-          ensure_import(
-              'app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt',
-              'import androidx.compose.ui.text.font.FontWeight\n'
-          )
+          # Critical UI-layer fix: the Mapbox view must live inside the scaffold content,
+          # otherwise it is drawn after the BottomSheetScaffold and covers the sheet/top bar.
+          p = Path('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt')
+          s = p.read_text(encoding='utf-8')
+          marker = '        if (accessToken.isBlank() || accessToken.startsWith("YOUR_")) {'
+          end_marker = '        }\n    }\n\n    if (showCancel) {'
+          start = s.find(marker)
+          if start == -1:
+              raise SystemExit('map block start not found')
+          end = s.find(end_marker, start)
+          if end == -1:
+              raise SystemExit('map block end not found')
+          map_block = s[start:end]
+          replacement = '        ) { _ ->\n            Box(Modifier.fillMaxSize()) {\n' + '\n'.join('                ' + line if line else line for line in map_block.splitlines()) + '\n            }\n        }\n\n        if (false) {\n'
+          # The scaffold currently ends with a one-line empty content block immediately before the map block.
+          empty_content = '        ) { _ -> Box(Modifier.fillMaxSize()) }\n\n'
+          if empty_content not in s[:start]:
+              raise SystemExit('scaffold content marker not found')
+          s = s.replace(empty_content, replacement, 1)
+          # Remove the original map block, including its surrounding blank line.
+          s = s.replace('\n' + map_block + '\n', '\n', 1)
+          # Turn the temporary guard into a no-op-free section by deleting it.
+          s = s.replace('\n        if (false) {\n', '\n', 1)
+          p.write_text(s, encoding='utf-8')
+          print('Applied CustomerRideExperience map layering fix')
           PY
 
       - name: Verify customer source invariants
