@@ -1,5 +1,6 @@
 package com.waslha.admin
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,6 +46,7 @@ class AdminOperationsActivity : ComponentActivity() {
 
 @Composable
 private fun AdminOperationsScreen(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var period by remember { mutableStateOf("all") }
     var report by remember { mutableStateOf<AdminReportDto?>(null) }
@@ -60,23 +62,19 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
         scope.launch {
             loading = true
             message = null
-            runCatching { AdminApiProvider.api.report(period) }
-                .onSuccess { if (it.success) report = it.data else message = it.message }
+            runCatching { AdminApiProvider.api.report(period) }.onSuccess { if (it.success) report = it.data }
                 .onFailure { message = it.message ?: "تعذر تحميل التقرير" }
-            runCatching { AdminApiProvider.api.supportTickets() }
-                .onSuccess { if (it.success) tickets = it.data.orEmpty() }
+            runCatching { AdminApiProvider.api.supportTickets() }.onSuccess { if (it.success) tickets = it.data.orEmpty() }
             loading = false
         }
     }
-
     LaunchedEffect(period) { reload() }
-
     val visibleTickets = tickets.filter { ticketFilter == "all" || it.status.equals(ticketFilter, true) }
 
     MaterialTheme {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Column {
                         Text("عمليات الإدارة", fontSize = 28.sp, fontWeight = FontWeight.Black)
                         Text("التقارير والتنبيهات والدعم", color = Color(0xFF6E7D76), fontSize = 10.sp)
@@ -84,6 +82,7 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
                     TextButton(onClick = onBack) { Text("رجوع") }
                 }
             }
+            item { Button(onClick = { context.startActivity(Intent(context, AdminAuditActivity::class.java)) }, Modifier.fillMaxWidth()) { Text("سجل عمليات الإدارة") } }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("all" to "الكل", "today" to "اليوم", "week" to "7 أيام", "month" to "الشهر").forEach { (value, label) ->
@@ -92,21 +91,7 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
                 }
             }
             item { Text("التقارير والإيرادات", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
-            report?.let { r ->
-                item {
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White)) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("كل الرحلات: ${r.totalTrips}")
-                            Text("المكتملة: ${r.completedTrips}")
-                            Text("الملغاة: ${r.cancelledTrips}")
-                            Text("الجارية: ${r.activeTrips}")
-                            Text("الإيراد: ${r.totalRevenue} ل.س", fontWeight = FontWeight.Bold)
-                            Text("متوسط الرحلة: ${"%.0f".format(r.averageFare)} ل.س")
-                            Text("الزبائن: ${r.totalCustomers} • الكباتن: ${r.totalDrivers} • متصلون: ${r.onlineDrivers}")
-                        }
-                    }
-                }
-            }
+            report?.let { r -> item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Text("كل الرحلات: ${r.totalTrips}"); Text("المكتملة: ${r.completedTrips}"); Text("الملغاة: ${r.cancelledTrips}"); Text("الجارية: ${r.activeTrips}"); Text("الإيراد: ${r.totalRevenue} ل.س", fontWeight = FontWeight.Bold); Text("متوسط الرحلة: ${"%.0f".format(r.averageFare)} ل.س"); Text("الزبائن: ${r.totalCustomers} • الكباتن: ${r.totalDrivers} • متصلون: ${r.onlineDrivers}") } } } }
             item { Text("إرسال إشعار", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             item {
                 OutlinedTextField(recipient, { recipient = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("معرّف الزبون (اختياري)") })
@@ -117,11 +102,7 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
                         if (title.isBlank() || body.isBlank()) { message = "أدخل العنوان والنص"; return@launch }
                         val target = recipient.trim().takeIf { it.isNotBlank() }
                         val result = runCatching { AdminApiProvider.api.notify(AdminNotificationRequest(userId = target, title = title.trim(), body = body.trim())) }.getOrNull()
-                        message = if (result?.success == true) {
-                            title = ""
-                            body = ""
-                            if (target == null) "تم إرسال الإشعار إلى ${result.data?.sent ?: 0} زبون" else "تم إرسال الإشعار إلى الزبون"
-                        } else result?.message ?: "تعذر إرسال الإشعار"
+                        message = if (result?.success == true) { title = ""; body = ""; if (target == null) "تم إرسال الإشعار إلى ${result.data?.sent ?: 0} زبون" else "تم إرسال الإشعار إلى الزبون" } else result?.message ?: "تعذر إرسال الإشعار"
                     }
                 }, Modifier.padding(top = 8.dp)) { Text(if (recipient.isBlank()) "إرسال للجميع" else "إرسال للزبون") }
             }
@@ -135,22 +116,7 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
             }
             if (visibleTickets.isEmpty() && !loading) item { Text("لا توجد تذاكر بهذه الحالة", color = Color(0xFF6E7D76), fontSize = 11.sp) }
             items(visibleTickets, key = { it.id }) { ticket ->
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White)) {
-                    Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(ticket.subject.ifBlank { "تذكرة دعم" }, fontWeight = FontWeight.Black)
-                        Text(ticket.message, color = Color(0xFF6E7D76), fontSize = 10.sp)
-                        Text("الزبون: ${ticket.userId.ifBlank { "غير معروف" }}", fontSize = 9.sp)
-                        Text("الحالة: ${ticket.status}", fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (!ticket.status.equals("resolved", true)) {
-                                Button(onClick = { scope.launch { AdminApiProvider.api.updateSupportTicket(ticket.id, AdminTicketStatusRequest("resolved")); reload() } }) { Text("حل") }
-                            }
-                            if (!ticket.status.equals("pending", true)) {
-                                Button(onClick = { scope.launch { AdminApiProvider.api.updateSupportTicket(ticket.id, AdminTicketStatusRequest("pending")); reload() } }) { Text("قيد المتابعة") }
-                            }
-                        }
-                    }
-                }
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White)) { Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(ticket.subject.ifBlank { "تذكرة دعم" }, fontWeight = FontWeight.Black); Text(ticket.message, color = Color(0xFF6E7D76), fontSize = 10.sp); Text("الزبون: ${ticket.userId.ifBlank { "غير معروف" }}", fontSize = 9.sp); Text("الحالة: ${ticket.status}", fontWeight = FontWeight.Bold); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (!ticket.status.equals("resolved", true)) Button(onClick = { scope.launch { AdminApiProvider.api.updateSupportTicket(ticket.id, AdminTicketStatusRequest("resolved")); reload() } }) { Text("حل") }; if (!ticket.status.equals("pending", true)) Button(onClick = { scope.launch { AdminApiProvider.api.updateSupportTicket(ticket.id, AdminTicketStatusRequest("pending")); reload() } }) { Text("قيد المتابعة") } } } }
             }
             message?.let { item { Text(it, color = Color(0xFF0B805E), fontSize = 11.sp) } }
             if (loading) item { CircularProgressIndicator() }
