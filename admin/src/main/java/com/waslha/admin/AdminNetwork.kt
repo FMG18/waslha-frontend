@@ -37,6 +37,7 @@ data class AdminNotificationRequest(val userId: String? = null, val title: Strin
 data class AdminNotificationResult(val sent: Int = 0)
 data class AdminSupportTicketDto(val id: String, val userId: String = "", val category: String = "general", val subject: String = "", val message: String = "", val tripId: String? = null, val status: String = "open", val createdAt: Long = 0L, val updatedAt: Long = 0L)
 data class AdminTicketStatusRequest(val status: String)
+data class AdminAuditLogDto(val id: String, val action: String = "", val target: String = "", val adminId: String = "", val details: String = "", val createdAt: Long = 0L)
 
 interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
@@ -58,6 +59,7 @@ interface AdminApi {
     @POST("api/v1/admin/ops/notifications") suspend fun notify(@Body body: AdminNotificationRequest): Envelope<AdminNotificationResult>
     @GET("api/v1/admin/ops/support/tickets") suspend fun supportTickets(): Envelope<List<AdminSupportTicketDto>>
     @PATCH("api/v1/admin/ops/support/tickets/{id}") suspend fun updateSupportTicket(@Path("id") id: String, @Body body: AdminTicketStatusRequest): Envelope<AdminSupportTicketDto>
+    @GET("api/v1/admin/audit/logs") suspend fun auditLogs(@Query("limit") limit: Int = 100): Envelope<List<AdminAuditLogDto>>
 }
 
 object AdminApiProvider {
