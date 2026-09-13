@@ -83,7 +83,7 @@ jobs:
             VERSION_NAME="$INPUT_VERSION_NAME"
           else
             VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)"
-            VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+            VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=\s*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
           fi
           test -n "$VERSION_CODE" || { echo "Could not resolve versionCode"; exit 1; }
           test -n "$VERSION_NAME" || { echo "Could not resolve versionName"; exit 1; }
@@ -96,44 +96,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-
-      - name: Fix Kotlin Compose compatibility
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def edit(path: str, replacements: list[tuple[str, str]]) -> None:
-              p = Path(path)
-              s = p.read_text(encoding='utf-8')
-              for old, new in replacements:
-                  s = s.replace(old, new, 1)
-              p.write_text(s, encoding='utf-8')
-
-          edit('app/src/main/java/com/waslha/app/PassengerFeatures.kt', [
-              ('import androidx.compose.foundation.layout.weight\n', ''),
-          ])
-
-          edit('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', [
-              ('import androidx.compose.foundation.layout.weight\n', ''),
-              ('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n'),
-              ('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:'),
-          ])
-
-          edit('app/src/main/java/com/waslha/app/TripExperience.kt', [
-              ('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n'),
-          ])
-          PY
-
-      - name: Verify release source
-        shell: bash
-        run: |
-          ! grep -q 'import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/PassengerFeatures.kt
-          ! grep -q 'import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
-          grep -q 'private fun RowScope.BottomItem' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
-          grep -q 'import androidx.compose.material.icons.filled.MyLocation' app/src/main/java/com/waslha/app/TripExperience.kt
-          test "$(grep -c --fixed-strings 'versionCode = 149' app/build.gradle.kts)" -eq 1
-          test "$(grep -c --fixed-strings 'versionName = \"1.4.9\"' app/build.gradle.kts)" -eq 1
 
       - name: Build one signed customer release APK
         run: |
