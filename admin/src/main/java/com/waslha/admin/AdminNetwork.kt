@@ -21,9 +21,9 @@ data class CodeResponse(val expiresIn: Int = 300, val devCode: String? = null)
 data class VerifyRequest(val phone: String, val code: String)
 data class Session(val userId: String, val phone: String = "", val role: String = "", val token: String = "", val name: String = "")
 data class AdminTotals(val trips: Int = 0, val activeTrips: Int = 0, val waitingTrips: Int = 0, val completedTrips: Int = 0, val drivers: Int = 0, val onlineDrivers: Int = 0, val revenue: Int = 0)
-data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
 data class AdminCoordinates(val lat: Double = 0.0, val lng: Double = 0.0)
 data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val phone: String? = null, val lat: Double? = null, val lng: Double? = null, val lastLocationAt: Long? = null)
+data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
 data class AdminOverview(val totals: AdminTotals, val latestTrips: List<AdminTripDto> = emptyList())
 data class AdminDriverAssignRequest(val driverId: String)
 data class AdminStatusRequest(val status: String)
@@ -61,7 +61,6 @@ object AdminApiProvider {
     private var initialized = false
     lateinit var api: AdminApi
         private set
-
     fun init(context: Context) {
         if (initialized) return
         val prefs = context.applicationContext.getSharedPreferences("waslha_admin", Context.MODE_PRIVATE)
@@ -70,28 +69,15 @@ object AdminApiProvider {
             prefs.getString("token", null)?.takeIf { it.isNotBlank() }?.let { request.header("Authorization", "Bearer $it") }
             chain.proceed(request.build())
         }
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
-        api = Retrofit.Builder().baseUrl(BASE_URL).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(AdminApi::class.java)
+        api = Retrofit.Builder().baseUrl(BASE_URL).client(OkHttpClient.Builder().addInterceptor(interceptor).build()).addConverterFactory(GsonConverterFactory.create()).build().create(AdminApi::class.java)
         initialized = true
     }
 }
 
 class AdminSessionStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("waslha_admin", Context.MODE_PRIVATE)
-    val signedIn: Boolean
-        get() = !prefs.getString("token", null).isNullOrBlank() && sessionTimestamp > 0L && (System.currentTimeMillis() - sessionTimestamp) < SESSION_MAX_AGE_MS && role.equals("admin", true)
-    fun save(session: Session) {
-        prefs.edit()
-            .putString("token", session.token)
-            .putString("userId", session.userId)
-            .putString("phone", session.phone)
-            .putString("name", session.name)
-            .putString("role", session.role)
-            .putLong("sessionAt", System.currentTimeMillis())
-            .apply()
-    }
-    fun clear() { prefs.edit().clear().apply() }
+    val signedIn get() = !prefs.getString("token", null).isNullOrBlank() && prefs.getLong("sessionAt", 0L) > 0L && System.currentTimeMillis() - prefs.getLong("sessionAt", 0L) < SESSION_MAX_AGE_MS && prefs.getString("role", "")?.equals("admin", true) == true
+    fun save(session: Session) = prefs.edit().putString("token", session.token).putString("userId", session.userId).putString("phone", session.phone).putString("name", session.name).putString("role", session.role).putLong("sessionAt", System.currentTimeMillis()).apply()
+    fun clear() = prefs.edit().clear().apply()
     val name get() = prefs.getString("name", "مدير وصلها") ?: "مدير وصلها"
-    private val role get() = prefs.getString("role", "") ?: ""
-    private val sessionTimestamp get() = prefs.getLong("sessionAt", 0L)
 }
