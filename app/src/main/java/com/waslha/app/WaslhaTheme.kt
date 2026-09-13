@@ -1,5 +1,6 @@
 package com.waslha.app
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -7,10 +8,13 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLayoutDirection
 
 private val WaslhaEmerald = Color(0xFF087F5B)
 private val WaslhaEmeraldDark = Color(0xFF055C42)
@@ -133,7 +137,10 @@ fun WaslhaTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = LightWaslhaColors,
         shapes = WaslhaShapes,
-        typography = WaslhaTypography,
-        content = content
-    )
+        typography = WaslhaTypography
+    ) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            content()
+        }
+    }
 }
