@@ -72,6 +72,7 @@ data class TripTrackingDto(val tripId: String, val status: String, val driver: D
 data class PlaceSearchDto(val id: String, val name: String, val address: String, val coordinates: Coordinates)
 data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
 data class MarkNotificationReadRequest(val userId: String)
+data class NotificationReadDto(val id: String, val read: Boolean = false)
 data class DeviceTokenRequest(val token: String)
 data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
 
