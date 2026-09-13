@@ -93,3 +93,4 @@ jobs:
           if-no-files-found: error
 
 # Admin-only build. Customer and Captain artifacts are never produced here.
+# Final signed APK verification trigger.
