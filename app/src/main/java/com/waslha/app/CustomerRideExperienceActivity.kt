@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,19 +72,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.MapboxOptions
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotation
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.max
 
 private val RideGreen = Color(0xFF087F5B)
 private val RideDark = Color(0xFF055C42)
@@ -136,7 +137,8 @@ private fun CustomerRideExperience(session: SessionStore, onExit: () -> Unit) {
     var showCancel by remember { mutableStateOf(false) }
     var showChat by remember { mutableStateOf(false) }
     var chatText by remember { mutableStateOf("") }
-    var chatMessages by remember { mutableStateOf(listOf<String>()) }
+    var chatMessages by remember { mutableStateOf(listOf<TripMessageDto>()) }
+    var chatAfter by remember { mutableStateOf(0L) }
 
     val accessToken = remember { context.resources.getString(R.string.mapbox_access_token).trim() }
     if (accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) MapboxOptions.accessToken = accessToken
@@ -170,14 +172,16 @@ private fun CustomerRideExperience(session: SessionStore, onExit: () -> Unit) {
     LaunchedEffect(Unit) {
         val allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (allowed) refreshPickup() else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        customerRepo.wallet().onSuccess { wallet = it }
-        customerRepo.savedPlaces().onSuccess { savedPlaces = it }
+        customerRepo.wallet().onSuccess { wallet = it }.onFailure { error = it.message ?: "تعذر تحميل المحفظة" }
+        customerRepo.savedPlaces().onSuccess { savedPlaces = it }.onFailure { error = it.message ?: "تعذر تحميل الأماكن المحفوظة" }
     }
 
     LaunchedEffect(pickup, destination, vehicleType) {
         val from = pickup ?: return@LaunchedEffect
         val to = destination ?: return@LaunchedEffect
-        repo.estimate(from, to, vehicleType).onSuccess { estimate = it }.onFailure { estimate = null; error = it.message ?: "تعذر حساب الأجرة" }
+        repo.estimate(from, to, vehicleType)
+            .onSuccess { estimate = it }
+            .onFailure { estimate = null; error = it.message ?: "تعذر حساب الأجرة" }
     }
 
     LaunchedEffect(mode, vehicleType) {
@@ -205,6 +209,20 @@ private fun CustomerRideExperience(session: SessionStore, onExit: () -> Unit) {
                 if (tracking.driver != null && trip != null && trip?.driver == null) trip = trip?.copy(driver = tracking.driver)
             }.onFailure { error = it.message ?: "تعذر تحديث حالة الرحلة" }
             if (mode == RideMode.COMPLETED || mode == RideMode.CANCELLED) break
+        }
+    }
+
+    LaunchedEffect(showChat, trip?.id) {
+        val id = trip?.id ?: return@LaunchedEffect
+        if (!showChat) return@LaunchedEffect
+        while (showChat) {
+            repo.messages(id, chatAfter).onSuccess { fresh ->
+                if (fresh.isNotEmpty()) {
+                    chatMessages = (chatMessages + fresh).distinctBy { it.id }.sortedBy { it.createdAt }.takeLast(100)
+                    chatAfter = chatMessages.maxOfOrNull { it.createdAt } ?: chatAfter
+                }
+            }
+            delay(2500)
         }
     }
 
@@ -349,12 +367,24 @@ private fun CustomerRideExperience(session: SessionStore, onExit: () -> Unit) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (chatMessages.isEmpty()) Text("ابدأ المحادثة مع الكابتن من هنا.", color = RideMuted, fontSize = 11.sp)
-                    else chatMessages.forEach { Text(it, color = RideInk, fontSize = 11.sp) }
+                    else chatMessages.forEach { message ->
+                        val mine = message.senderId == session.userId
+                        Text(if (mine) "أنت: ${message.text}" else "الكابتن: ${message.text}", color = RideInk, fontSize = 11.sp)
+                    }
                     androidx.compose.material3.OutlinedTextField(chatText, { chatText = it }, Modifier.fillMaxWidth(), label = { Text("رسالتك") }, singleLine = true)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { if (chatText.isNotBlank()) { chatMessages = chatMessages + "أنت: ${chatText.trim()}"; chatText = "" } }) { Text("إرسال", color = RideGreen, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = {
+                    val id = trip?.id ?: return@TextButton
+                    val text = chatText.trim()
+                    if (text.isBlank()) return@TextButton
+                    scope.launch {
+                        repo.sendMessage(id, text)
+                            .onSuccess { sent -> chatMessages = (chatMessages + sent).distinctBy { it.id }; chatAfter = maxOf(chatAfter, sent.createdAt); chatText = "" }
+                            .onFailure { error = it.message ?: "تعذر إرسال الرسالة" }
+                    }
+                }) { Text("إرسال", color = RideGreen, fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { showChat = false }) { Text("إغلاق") } }
         )
@@ -454,7 +484,7 @@ private fun BookingSheet(
         Button(onClick = { onSavePlace("home") }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = RideSoft, contentColor = RideGreen), shape = RoundedCornerShape(14.dp)) { Text("حفظ كمنزل", fontSize = 9.sp) }
         Button(onClick = { onSavePlace("work") }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = RideSoft, contentColor = RideGreen), shape = RoundedCornerShape(14.dp)) { Text("حفظ كعمل", fontSize = 9.sp) }
     }
-    Button(enabled = !busy, onClick = onRequest, Modifier.fillMaxWidth().height(54.dp), colors = ButtonDefaults.buttonColors(containerColor = RideGreen), shape = RoundedCornerShape(17.dp)) {
+    Button(enabled = !busy, onClick = onRequest, modifier = Modifier.fillMaxWidth().height(54.dp), colors = ButtonDefaults.buttonColors(containerColor = RideGreen), shape = RoundedCornerShape(17.dp)) {
         if (busy) CircularProgressIndicator(Modifier.size(21.dp), color = Color.White, strokeWidth = 2.dp) else Text("طلب التكسي", fontWeight = FontWeight.Black, fontSize = 16.sp)
     }
 }
@@ -519,7 +549,7 @@ private fun LocationChoice(label: String, value: String, icon: androidx.compose.
 }
 
 @Composable
-private fun PaymentMini(title: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun RowScope.PaymentMini(title: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick), colors = CardDefaults.cardColors(if (selected) RideSoft else Color.White), shape = RoundedCornerShape(14.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) RideGreen else RideLine)) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = selected, onClick = { if (enabled) onClick() }, enabled = enabled)
