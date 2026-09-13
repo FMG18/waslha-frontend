@@ -97,6 +97,44 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
+      - name: Fix Kotlin Compose compatibility
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def edit(path: str, replacements: list[tuple[str, str]]) -> None:
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              for old, new in replacements:
+                  s = s.replace(old, new, 1)
+              p.write_text(s, encoding='utf-8')
+
+          edit('app/src/main/java/com/waslha/app/PassengerFeatures.kt', [
+              ('import androidx.compose.foundation.layout.weight\n', ''),
+          ])
+
+          edit('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', [
+              ('import androidx.compose.foundation.layout.weight\n', ''),
+              ('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n'),
+              ('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:'),
+          ])
+
+          edit('app/src/main/java/com/waslha/app/TripExperience.kt', [
+              ('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n'),
+          ])
+          PY
+
+      - name: Verify release source
+        shell: bash
+        run: |
+          ! grep -q 'import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/PassengerFeatures.kt
+          ! grep -q 'import androidx.compose.foundation.layout.weight' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
+          grep -q 'private fun RowScope.BottomItem' app/src/main/java/com/waslha/app/TaxiBookingActivity.kt
+          grep -q 'import androidx.compose.material.icons.filled.MyLocation' app/src/main/java/com/waslha/app/TripExperience.kt
+          test "$(grep -c --fixed-strings 'versionCode = 149' app/build.gradle.kts)" -eq 1
+          test "$(grep -c --fixed-strings 'versionName = \"1.4.9\"' app/build.gradle.kts)" -eq 1
+
       - name: Build one signed customer release APK
         run: |
           gradle :app:assembleRelease --stacktrace \
@@ -105,13 +143,18 @@ jobs:
             -PWASLHA_KEY_ALIAS="$WASLHA_KEY_ALIAS" \
             -PWASLHA_KEY_PASSWORD="$WASLHA_KEY_PASSWORD"
 
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --print-certs "$APK"
+
       - name: Prepare release assets
         shell: bash
         run: |
           mkdir -p release-assets
-          apk="app/build/outputs/apk/release/app-release.apk"
-          test -f "$apk" || { echo "Expected one signed APK not found"; find app/build/outputs/apk/release -maxdepth 2 -type f -print; exit 1; }
-          cp "$apk" release-assets/waslha.apk
+          cp app/build/outputs/apk/release/app-release.apk release-assets/waslha.apk
           sha256sum release-assets/waslha.apk > release-assets/waslha.apk.sha256
           printf '%s\n' "Version: $VERSION_NAME" "Version code: $VERSION_CODE" > release-assets/release-info.txt
 
