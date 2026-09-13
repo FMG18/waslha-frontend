@@ -33,15 +33,56 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build Admin release APK
+      - name: Restore persistent Waslha signing key
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_BASE64: ${{ secrets.WASLHA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WASLHA_KEYSTORE_BASE64" || { echo "Missing WASLHA_KEYSTORE_BASE64 secret"; exit 1; }
+          mkdir -p "$GITHUB_WORKSPACE/admin"
+          printf '%s' "$WASLHA_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/admin/waslha-admin-release.keystore"
+          test -s "$GITHUB_WORKSPACE/admin/waslha-admin-release.keystore"
+
+      - name: Validate Admin signing configuration
+        shell: bash
+        env:
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$WASLHA_KEYSTORE_PASSWORD" || { echo "Missing WASLHA_KEYSTORE_PASSWORD secret"; exit 1; }
+          test -n "$WASLHA_KEY_ALIAS" || { echo "Missing WASLHA_KEY_ALIAS secret"; exit 1; }
+          test -n "$WASLHA_KEY_PASSWORD" || { echo "Missing WASLHA_KEY_PASSWORD secret"; exit 1; }
+          keytool -list -keystore "$GITHUB_WORKSPACE/admin/waslha-admin-release.keystore" -storepass "$WASLHA_KEYSTORE_PASSWORD" -alias "$WASLHA_KEY_ALIAS" >/dev/null
+          echo "Admin signing configuration is valid."
+
+      - name: Build signed Admin release APK
+        env:
+          WASLHA_KEYSTORE_PATH: ${{ github.workspace }}/admin/waslha-admin-release.keystore
+          WASLHA_KEYSTORE_PASSWORD: ${{ secrets.WASLHA_KEYSTORE_PASSWORD }}
+          WASLHA_KEY_ALIAS: ${{ secrets.WASLHA_KEY_ALIAS }}
+          WASLHA_KEY_PASSWORD: ${{ secrets.WASLHA_KEY_PASSWORD }}
         run: gradle :admin:assembleRelease --stacktrace
+
+      - name: Verify Admin APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find admin/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+          test -n "$apk" || { echo "No signed Admin APK produced"; find admin/build/outputs -type f -maxdepth 5 || true; exit 1; }
+          apksigner=$(find "$ANDROID_HOME" -type f -name apksigner | head -n 1)
+          test -n "$apksigner" || { echo "apksigner not found"; exit 1; }
+          "$apksigner" verify --verbose "$apk"
+          echo "Found and verified signed Admin APK: $apk"
 
       - name: Prepare Admin APK
         shell: bash
         run: |
           set -euo pipefail
           apk="$(find admin/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name '*unsigned*' | head -n 1)"
-          test -n "$apk" || { echo "No Admin APK produced"; find admin/build/outputs -type f -maxdepth 5 || true; exit 1; }
+          test -n "$apk" || exit 1
           cp "$apk" admin/build/outputs/apk/release/waslha-admin-beta.apk
 
       - name: Upload Admin APK
