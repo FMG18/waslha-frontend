@@ -183,7 +183,8 @@ private fun SheetRouteRow(
     label: String,
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    loading: Boolean,
+    loading: Boolean = false,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
