@@ -1,9 +1,11 @@
 package com.waslha.app
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -40,6 +42,21 @@ interface WaslhaApi {
     suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
     @POST("/api/v1/notifications/device-token")
     suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): ApiEnvelope<DeviceTokenResponse>
+
+    @GET("/api/v1/customer/me")
+    suspend fun customerMe(): ApiEnvelope<CustomerProfileDto>
+    @PATCH("/api/v1/customer/me")
+    suspend fun updateCustomer(@Body body: CustomerProfileUpdateRequest): ApiEnvelope<CustomerProfileDto>
+    @DELETE("/api/v1/customer/me")
+    suspend fun deleteCustomer(): ApiEnvelope<AccountDeleteDto>
+    @GET("/api/v1/customer/wallet")
+    suspend fun wallet(): ApiEnvelope<WalletDto>
+    @GET("/api/v1/customer/places")
+    suspend fun savedPlaces(): ApiEnvelope<List<SavedPlaceDto>>
+    @PUT("/api/v1/customer/places/{slot}")
+    suspend fun savePlace(@Path("slot") slot: String, @Body body: SavedPlaceRequest): ApiEnvelope<SavedPlaceDto>
+    @DELETE("/api/v1/customer/places/{id}")
+    suspend fun deletePlace(@Path("id") id: String): ApiEnvelope<PlaceDeleteDto>
 }
 
 data class AppUpdateDto(val updateAvailable: Boolean, val versionName: String = "", val versionCode: Int = 0, val releaseNotes: String = "", val publishedAt: String? = null, val mandatory: Boolean = false, val apk: AppUpdateApkDto? = null)
@@ -51,6 +68,21 @@ data class TripTrackingDto(val tripId: String, val status: String, val driver: D
 data class PlaceSearchDto(val id: String, val name: String, val address: String, val coordinates: Coordinates)
 data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
 data class MarkNotificationReadRequest(val userId: String)
-data class NotificationReadDto(val id: String, val read: Boolean)
 data class DeviceTokenRequest(val token: String)
 data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
+
+data class CustomerProfileDto(
+    val id: String,
+    val name: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val picture: String = "",
+    val walletBalance: Long = 0L,
+    val currency: String = "SYP"
+)
+data class CustomerProfileUpdateRequest(val name: String? = null, val phone: String? = null, val picture: String? = null)
+data class AccountDeleteDto(val deleted: Boolean)
+data class WalletDto(val balance: Long = 0L, val currency: String = "SYP")
+data class SavedPlaceDto(val id: String, val type: String, val name: String, val latitude: Double, val longitude: Double, val updatedAt: Long = 0L)
+data class SavedPlaceRequest(val name: String, val latitude: Double, val longitude: Double)
+data class PlaceDeleteDto(val deleted: Boolean)
