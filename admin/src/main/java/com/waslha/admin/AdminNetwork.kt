@@ -13,6 +13,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 private const val BASE_URL = "https://waslha-backend.vercel.app/"
+private const val SESSION_MAX_AGE_MS = 7L * 24L * 60L * 60L * 1000L
 
 data class Envelope<T>(val success: Boolean, val data: T? = null, val message: String? = null)
 data class CodeRequest(val phone: String)
@@ -77,8 +78,20 @@ object AdminApiProvider {
 
 class AdminSessionStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("waslha_admin", Context.MODE_PRIVATE)
-    val signedIn get() = !prefs.getString("token", null).isNullOrBlank()
-    fun save(session: Session) { prefs.edit().putString("token", session.token).putString("userId", session.userId).putString("phone", session.phone).putString("name", session.name).putString("role", session.role).apply() }
+    val signedIn: Boolean
+        get() = !prefs.getString("token", null).isNullOrBlank() && sessionTimestamp > 0L && (System.currentTimeMillis() - sessionTimestamp) < SESSION_MAX_AGE_MS && role.equals("admin", true)
+    fun save(session: Session) {
+        prefs.edit()
+            .putString("token", session.token)
+            .putString("userId", session.userId)
+            .putString("phone", session.phone)
+            .putString("name", session.name)
+            .putString("role", session.role)
+            .putLong("sessionAt", System.currentTimeMillis())
+            .apply()
+    }
     fun clear() { prefs.edit().clear().apply() }
     val name get() = prefs.getString("name", "مدير وصلها") ?: "مدير وصلها"
+    private val role get() = prefs.getString("role", "") ?: ""
+    private val sessionTimestamp get() = prefs.getLong("sessionAt", 0L)
 }
