@@ -12,8 +12,32 @@ android {
         applicationId = "com.waslha.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
+    }
+
+    val keystorePath = System.getenv("WASLHA_KEYSTORE_PATH")
+    val keystorePassword = System.getenv("WASLHA_KEYSTORE_PASSWORD")
+    val keyAlias = System.getenv("WASLHA_KEY_ALIAS")
+    val keyPassword = System.getenv("WASLHA_KEY_PASSWORD")
+
+    signingConfigs {
+        create("release") {
+            if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     compileOptions {
