@@ -67,7 +67,7 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Patch customer Kotlin compatibility and normalize customer sources
+            - name: Patch customer Kotlin compatibility and normalize customer sources
         shell: bash
         run: |
           python3 - <<'PY'
@@ -77,37 +77,68 @@ jobs:
               p = Path(path)
               s = p.read_text(encoding='utf-8')
               for old, new in replacements:
-                  s = s.replace(old, new)
+                  if old in s:
+                      s = s.replace(old, new)
               p.write_text(s, encoding='utf-8')
 
+          def ensure_import(path, import_line):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              if import_line not in s:
+                  lines = s.splitlines(True)
+                  insert_at = 1 if lines and lines[0].startswith("package ") else 0
+                  lines.insert(insert_at, import_line)
+                  p.write_text("".join(lines), encoding='utf-8')
+
+          # TaxiBookingActivity
           patch('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', [
               ('import androidx.compose.foundation.layout.weight\n', ''),
-              ('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n'),
               ('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:')
           ])
+          ensure_import(
+              'app/src/main/java/com/waslha/app/TaxiBookingActivity.kt',
+              'import androidx.compose.foundation.layout.RowScope\n'
+          )
 
-          patch('app/src/main/java/com/waslha/app/TripExperience.kt', [
-              ('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n')
-          ])
+          # TripExperience
+          ensure_import(
+              'app/src/main/java/com/waslha/app/TripExperience.kt',
+              'import androidx.compose.material.icons.filled.MyLocation\n'
+          )
 
+          # PassengerFeatures
           patch('app/src/main/java/com/waslha/app/PassengerFeatures.kt', [
               ('import androidx.compose.foundation.layout.weight\n', '')
           ])
 
+          # WaslhaCustomerActivity
           patch('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', [
-              ('CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }', 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'),
-              ('val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)', 'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'),
+              (
+                  'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }',
+                  'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'
+              ),
+              (
+                  'val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)',
+                  'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'
+              ),
               ('"1.4.5"', 'BuildConfig.VERSION_NAME'),
               ('"v1.4.5"', '"v${BuildConfig.VERSION_NAME}"')
           ])
 
+          # CustomerRideExperienceActivity
           patch('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt', [
               ('import com.mapbox.maps.MapboxOptions\n', 'import com.mapbox.common.MapboxOptions\n'),
-              ('import androidx.compose.ui.unit.sp\n', 'import androidx.compose.ui.unit.sp\nimport androidx.compose.ui.text.font.FontWeight\n'),
-              ('Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick),', 'Card(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),')
+              (
+                  'Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick),',
+                  'Card(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),'
+              )
           ])
-          PY
 
+          ensure_import(
+              'app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt',
+              'import androidx.compose.ui.text.font.FontWeight\n'
+          )
+          PY
       - name: Verify customer source invariants
         shell: bash
         run: |
