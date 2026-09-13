@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,10 +30,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,17 +50,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +65,8 @@ fun CustomerHomeMap(
     sessionStore: SessionStore,
     pickup: Coordinates,
     pickupLabel: String,
-    destination: AnyDestination?,
-    vehicle: AnyVehicle,
+    destination: V2Destination?,
+    vehicle: V2Vehicle,
     estimate: FareEstimate?,
     estimateLoading: Boolean,
     locationLoading: Boolean,
@@ -78,10 +74,9 @@ fun CustomerHomeMap(
     error: String?,
     onRefreshLocation: () -> Unit,
     onDestinationPicked: (Coordinates) -> Unit,
-    onVehicle: (AnyVehicle) -> Unit,
+    onVehicle: (V2Vehicle) -> Unit,
     onRequest: (String) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     val customerRepo = remember { CustomerRepository(ApiProvider.api) }
     var paymentMethod by remember { mutableStateOf("cash") }
     var walletBalance by remember { mutableStateOf<Long?>(null) }
@@ -98,7 +93,10 @@ fun CustomerHomeMap(
         }
     }
 
-    val bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = true)
+    val bottomSheetState = rememberStandardBottomSheetState(
+        initialValue = SheetValue.PartiallyExpanded,
+        skipHiddenState = true
+    )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
 
     BottomSheetScaffold(
@@ -112,7 +110,6 @@ fun CustomerHomeMap(
         sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         sheetContent = {
             HomeSheetContent(
-                sessionStore = sessionStore,
                 pickupLabel = pickupLabel,
                 destination = destination,
                 vehicle = vehicle,
@@ -124,7 +121,6 @@ fun CustomerHomeMap(
                 paymentMethod = paymentMethod,
                 walletBalance = walletBalance,
                 onRefreshLocation = onRefreshLocation,
-                onDestinationPicked = onDestinationPicked,
                 onVehicle = onVehicle,
                 onPayment = { paymentMethod = it },
                 onRequest = { onRequest(paymentMethod) }
@@ -139,11 +135,8 @@ fun CustomerHomeMap(
                 onDestinationPicked = onDestinationPicked
             )
 
-            // Live nearby-driver markers are visualized over the map while searching.
             if (nearby.isNotEmpty() && destination == null) {
-                nearby.take(12).forEachIndexed { index, driver ->
-                    NearbyDriverMarker(index)
-                }
+                nearby.take(8).forEachIndexed { index, _ -> NearbyDriverMarker(index) }
             }
 
             if (destination == null) {
@@ -151,7 +144,10 @@ fun CustomerHomeMap(
                 val pulse by transition.animateFloat(
                     initialValue = 0.25f,
                     targetValue = 1f,
-                    animationSpec = infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Restart),
+                    animationSpec = infiniteRepeatable(
+                        tween(1700, easing = FastOutSlowInEasing),
+                        RepeatMode.Restart
+                    ),
                     label = "pulse"
                 )
                 Box(Modifier.align(Alignment.Center).size(96.dp), contentAlignment = Alignment.Center) {
@@ -162,18 +158,14 @@ fun CustomerHomeMap(
                 }
             }
         }
-    }
+    )
 }
-
-typealias AnyDestination = V2Destination
-typealias AnyVehicle = V2Vehicle
 
 @Composable
 private fun HomeSheetContent(
-    sessionStore: SessionStore,
     pickupLabel: String,
-    destination: AnyDestination?,
-    vehicle: AnyVehicle,
+    destination: V2Destination?,
+    vehicle: V2Vehicle,
     estimate: FareEstimate?,
     estimateLoading: Boolean,
     locationLoading: Boolean,
@@ -182,22 +174,28 @@ private fun HomeSheetContent(
     paymentMethod: String,
     walletBalance: Long?,
     onRefreshLocation: () -> Unit,
-    onDestinationPicked: (Coordinates) -> Unit,
-    onVehicle: (AnyVehicle) -> Unit,
+    onVehicle: (V2Vehicle) -> Unit,
     onPayment: (String) -> Unit,
     onRequest: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp).navigationBarsPadding().padding(bottom = 12.dp),
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 18.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(Modifier.align(Alignment.CenterHorizontally).size(42.dp, 4.dp).background(Color(0xFFD8E0DC), RoundedCornerShape(4.dp)))
-        Text("جاهز لمشوارك؟", color = Color(0xFF12201B), fontSize = 22.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
+        Box(
+            Modifier.align(Alignment.CenterHorizontally)
+                .size(42.dp, 4.dp)
+                .background(Color(0xFFD8E0DC), RoundedCornerShape(4.dp))
+        )
+        Text("جاهز لمشوارك؟", color = Color(0xFF12201B), fontSize = 22.sp, fontWeight = FontWeight.Black)
         Text("اختار وجهتك والسيارة المناسبة", color = Color(0xFF6D7A75), fontSize = 11.sp)
 
-        HomeRouteItem("من", pickupLabel, Icons.Default.MyLocation, false, locationLoading, onRefreshLocation)
+        HomeRouteItem("من", pickupLabel, Icons.Default.MyLocation, locationLoading, onRefreshLocation)
         HomeRouteConnector()
-        HomeRouteItem("إلى", destination?.title ?: "وين نوصلك؟ اضغط هنا أو حرّك الخريطة", Icons.Default.LocationOn, true, false) { }
+        HomeRouteItem("إلى", destination?.title ?: "وين نوصلك؟ اضغط هنا وحدد الوجهة", Icons.Default.LocationOn, false) { }
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
             items(v2Vehicles, key = { it.id }) { option ->
@@ -206,73 +204,143 @@ private fun HomeSheetContent(
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PaymentChip("نقداً", "cash", paymentMethod == "cash") { onPayment("cash") }
+            PaymentChip("نقداً", "cash", paymentMethod == "cash", null) { onPayment("cash") }
             PaymentChip("المحفظة", "wallet", paymentMethod == "wallet", walletBalance) { onPayment("wallet") }
         }
 
         if (estimate != null || estimateLoading) {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFF5F8F6)), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(Color(0xFFF5F8F6)),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CreditCard, null, tint = Color(0xFF087F5B), modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Text("الأجرة التقديرية", color = Color(0xFF6D7A75), fontSize = 9.sp)
-                        Text(if (estimateLoading) "جاري الحساب…" else "${estimate!!.estimatedFare} ${estimate!!.currency}", color = Color(0xFF12201B), fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
+                        Text(
+                            if (estimateLoading) "جاري الحساب…" else "${estimate!!.estimatedFare} ${estimate!!.currency}",
+                            color = Color(0xFF12201B),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black
+                        )
                     }
-                    if (paymentMethod == "wallet") Text("رصيد المحفظة: ${walletBalance ?: 0} ل.س", color = Color(0xFF087F5B), fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    if (paymentMethod == "wallet") {
+                        Text(
+                            "رصيد المحفظة: ${walletBalance ?: 0} ل.س",
+                            color = Color(0xFF087F5B),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
         if (!error.isNullOrBlank()) {
-            Text(error, color = Color(0xFFB42318), fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Text(error, color = Color(0xFFB42318), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
 
         Button(
             onClick = onRequest,
-            enabled = !requesting && destination != null && (paymentMethod != "wallet" || (walletBalance ?: 0L) >= (estimate?.estimatedFare ?: Long.MAX_VALUE)),
+            enabled = !requesting && destination != null &&
+                (paymentMethod != "wallet" || (walletBalance ?: 0L) >= (estimate?.estimatedFare ?: Long.MAX_VALUE)),
             modifier = Modifier.fillMaxWidth().height(54.dp),
             shape = RoundedCornerShape(17.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6F4DBA))
         ) {
-            if (requesting) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-            else Text("اطلب التكسي", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Black, fontSize = 15.sp)
+            if (requesting) {
+                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+            } else {
+                Text("اطلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            }
         }
     }
 }
 
 @Composable
-private fun HomeRouteItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Boolean, loading: Boolean, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (accent) Color.White else Color(0xFFF2F6F4)), shape = RoundedCornerShape(17.dp), elevation = CardDefaults.cardElevation(0.dp)) {
+private fun HomeRouteItem(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(Color(0xFFF2F6F4)),
+        shape = RoundedCornerShape(17.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(38.dp).background(if (accent) Color(0xFFE7F6F0) else Color.White, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color(0xFF087F5B), modifier = Modifier.size(19.dp)) }
+            Box(Modifier.size(38.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color(0xFF087F5B), modifier = Modifier.size(19.dp))
+            }
             Spacer(Modifier.width(9.dp))
-            Column(Modifier.weight(1f)) { Text(label, color = Color(0xFF6D7A75), fontSize = 9.sp); Text(value, color = Color(0xFF12201B), fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
+            Column(Modifier.weight(1f)) {
+                Text(label, color = Color(0xFF6D7A75), fontSize = 9.sp)
+                Text(value, color = Color(0xFF12201B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
             if (loading) CircularProgressIndicator(Modifier.size(18.dp), color = Color(0xFF087F5B), strokeWidth = 2.dp)
         }
     }
 }
 
 @Composable
-private fun HomeRouteConnector() { Row(Modifier.padding(start = 17.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.width(2.dp).height(8.dp).background(Color(0xFFB8E986))); Spacer(Modifier.width(6.dp)); Text("مسار الرحلة", color = Color(0xFF8A9791), fontSize = 8.sp) } }
-
-@Composable
-private fun VehicleChip(vehicle: AnyVehicle, selected: Boolean, onClick: () -> Unit) {
-    Card(Modifier.clickable { onClick() }, colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF5F7F6)), shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)), elevation = CardDefaults.cardElevation(0.dp)) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color(0xFF087F5B) else Color(0xFF6D7A75), modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(vehicle.title, color = Color(0xFF12201B), fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
+private fun HomeRouteConnector() {
+    Row(Modifier.padding(start = 17.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(2.dp).height(8.dp).background(Color(0xFFB8E986)))
+        Spacer(Modifier.width(6.dp))
+        Text("مسار الرحلة", color = Color(0xFF8A9791), fontSize = 8.sp)
     }
 }
 
 @Composable
-private fun PaymentChip(title: String, value: String, selected: Boolean, balance: Long? = null, onClick: () -> Unit) {
-    Card(Modifier.weight(1f).clickable { onClick() }, colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF6F8F7)), shape = RoundedCornerShape(15.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)), elevation = CardDefaults.cardElevation(0.dp)) {
-        Row(Modifier.padding(9.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = selected, onClick = onClick); Column { Text(title, color = Color(0xFF12201B), fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold); if (value == "wallet") Text("${balance ?: 0} ل.س", color = Color(0xFF087F5B), fontSize = 9.sp) } }
+private fun VehicleChip(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Unit) {
+    Card(
+        Modifier.clickable { onClick() },
+        colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF5F7F6)),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color(0xFF087F5B) else Color(0xFF6D7A75), modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(vehicle.title, color = Color(0xFF12201B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.PaymentChip(title: String, value: String, selected: Boolean, balance: Long?, onClick: () -> Unit) {
+    Card(
+        Modifier.weight(1f).clickable { onClick() },
+        colors = CardDefaults.cardColors(if (selected) Color(0xFFE7F6F0) else Color(0xFFF6F8F7)),
+        shape = RoundedCornerShape(15.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF087F5B) else Color(0xFFDDE5E1)),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(Modifier.padding(9.dp), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = selected, onClick = onClick)
+            Column {
+                Text(title, color = Color(0xFF12201B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                if (value == "wallet") Text("${balance ?: 0} ل.س", color = Color(0xFF087F5B), fontSize = 9.sp)
+            }
+        }
     }
 }
 
 @Composable
 private fun NearbyDriverMarker(index: Int) {
-    Box(Modifier.fillMaxSize().padding(start = (26 + (index % 4) * 66).dp, top = (165 + (index % 5) * 58).dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.size(30.dp).background(Color.White, CircleShape).padding(3.dp).background(Color(0xFF087F5B), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(17.dp)) }
+    Box(
+        Modifier.padding(start = (26 + (index % 4) * 66).dp, top = (165 + (index % 5) * 58).dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(Modifier.size(30.dp).background(Color.White, CircleShape).padding(3.dp).background(Color(0xFF087F5B), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(17.dp))
+        }
     }
 }
