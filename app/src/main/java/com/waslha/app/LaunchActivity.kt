@@ -41,7 +41,8 @@ class LaunchActivity : ComponentActivity() {
                         requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7001)
                     }
                 }
-                val target = if (sessionStore.isSignedIn) CustomerRideExperienceActivity::class.java else AuthActivity::class.java
+                // Single stable entry point: MainActivity decides between auth, active-trip resume and customer home.
+                val target = MainActivity::class.java
                 startActivity(Intent(this@LaunchActivity, target).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 })
