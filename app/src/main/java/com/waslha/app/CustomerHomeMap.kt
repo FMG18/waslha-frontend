@@ -49,7 +49,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.clip
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -80,9 +80,11 @@ private fun distanceKm(a: Coordinates, b: Coordinates): Double {
     val earthRadiusKm = 6371.0
     val dLat = Math.toRadians(b.lat - a.lat)
     val dLng = Math.toRadians(b.lng - a.lng)
-    val h = kotlin.math.sin(dLat / 2).let { it * it } +
-        kotlin.math.cos(Math.toRadians(a.lat)) * kotlin.math.cos(Math.toRadians(b.lat)) *
-        kotlin.math.sin(dLng / 2).let { it * it }
+    val latA = Math.toRadians(a.lat)
+    val latB = Math.toRadians(b.lat)
+    val halfLat = kotlin.math.sin(dLat / 2)
+    val halfLng = kotlin.math.sin(dLng / 2)
+    val h = halfLat * halfLat + kotlin.math.cos(latA) * kotlin.math.cos(latB) * halfLng * halfLng
     return 2.0 * earthRadiusKm * kotlin.math.asin(kotlin.math.sqrt(h.coerceIn(0.0, 1.0)))
 }
 
