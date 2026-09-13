@@ -34,6 +34,10 @@ interface WaslhaApi {
     suspend fun updateTripStatus(@Path("id") id: String, @Body body: TripStatusRequest): ApiEnvelope<Trip>
     @POST("/api/v1/trips/{id}/cancel")
     suspend fun cancelTrip(@Path("id") id: String, @Body body: CancelTripRequest): ApiEnvelope<Trip>
+    @GET("/api/v1/trips/{id}/messages")
+    suspend fun tripMessages(@Path("id") id: String, @Query("after") after: Long = 0L): ApiEnvelope<List<TripMessageDto>>
+    @POST("/api/v1/trips/{id}/messages")
+    suspend fun sendTripMessage(@Path("id") id: String, @Body body: TripMessageRequest): ApiEnvelope<TripMessageDto>
     @GET("/api/v1/places/search")
     suspend fun searchPlaces(@Query("q") query: String): ApiEnvelope<List<PlaceSearchDto>>
     @GET("/api/v1/notifications")
@@ -42,7 +46,6 @@ interface WaslhaApi {
     suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
     @POST("/api/v1/notifications/device-token")
     suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): ApiEnvelope<DeviceTokenResponse>
-
     @GET("/api/v1/customer/me")
     suspend fun customerMe(): ApiEnvelope<CustomerProfileDto>
     @PATCH("/api/v1/customer/me")
@@ -68,6 +71,8 @@ data class AppUpdateApkDto(val name: String, val size: Long, val url: String, va
 data class VehicleTypeDto(val id: String, val name: String, val description: String, val seats: Int, val badge: String?)
 data class TripStatusRequest(val status: String)
 data class CancelTripRequest(val reason: String)
+data class TripMessageRequest(val text: String)
+data class TripMessageDto(val id: String, val tripId: String, val senderId: String, val senderRole: String, val text: String, val createdAt: Long = 0L)
 data class TripTrackingDto(val tripId: String, val status: String, val driver: Driver? = null, val etaMinutes: Int? = null, val distanceToPickupKm: Double? = null, val updatedAt: Long = 0L)
 data class PlaceSearchDto(val id: String, val name: String, val address: String, val coordinates: Coordinates)
 data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
@@ -75,7 +80,6 @@ data class MarkNotificationReadRequest(val userId: String)
 data class NotificationReadDto(val id: String, val read: Boolean = false)
 data class DeviceTokenRequest(val token: String)
 data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
-
 data class CustomerProfileDto(val id: String, val name: String = "", val phone: String = "", val email: String = "", val picture: String = "", val walletBalance: Long = 0L, val currency: String = "SYP")
 data class CustomerProfileUpdateRequest(val name: String? = null, val phone: String? = null, val picture: String? = null)
 data class AccountDeleteDto(val deleted: Boolean)
