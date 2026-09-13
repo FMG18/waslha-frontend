@@ -23,7 +23,7 @@ data class Session(val userId: String, val phone: String = "", val role: String 
 data class AdminTotals(val trips: Int = 0, val activeTrips: Int = 0, val waitingTrips: Int = 0, val completedTrips: Int = 0, val drivers: Int = 0, val onlineDrivers: Int = 0, val revenue: Int = 0)
 data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
 data class AdminCoordinates(val lat: Double = 0.0, val lng: Double = 0.0)
-data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val phone: String? = null)
+data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val phone: String? = null, val lat: Double? = null, val lng: Double? = null, val lastLocationAt: Long? = null)
 data class AdminOverview(val totals: AdminTotals, val latestTrips: List<AdminTripDto> = emptyList())
 data class AdminDriverAssignRequest(val driverId: String)
 data class AdminStatusRequest(val status: String)
