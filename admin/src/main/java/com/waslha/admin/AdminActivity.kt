@@ -3,7 +3,6 @@ package com.waslha.admin
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val Green = Color(0xFF0B805E)
@@ -59,11 +59,18 @@ private fun AdminApp() {
                 drivers = d
             } catch (e: Exception) {
                 error = e.message ?: "تعذر تحميل بيانات الإدارة"
-            } finally { loading = false }
+            } finally {
+                loading = false
+            }
         }
     }
 
-    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(Unit) {
+        while (true) {
+            refresh()
+            delay(15_000)
+        }
+    }
 
     MaterialTheme {
         Surface(Modifier.fillMaxSize(), color = Bg) {
@@ -104,7 +111,7 @@ private fun Dashboard(modifier: Modifier, overview: AdminOverview?, trips: List<
             Card(colors = CardDefaults.cardColors(Color(0xFFFFF1F0)), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(15.dp)) {
                     Text(error, color = Red, fontWeight = FontWeight.Bold)
-                    Text("اسحب التحديث أو اضغط تحديث لإعادة المحاولة", color = Muted, fontSize = 10.sp)
+                    Text("تحقق من الاتصال بالخادم ثم أعد التحديث", color = Muted, fontSize = 10.sp)
                 }
             }
         }
@@ -112,8 +119,8 @@ private fun Dashboard(modifier: Modifier, overview: AdminOverview?, trips: List<
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(25.dp), colors = CardDefaults.cardColors(Dark)) {
                 Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text("حالة النظام", color = White.copy(alpha = .7f), fontSize = 10.sp)
-                    Text(if (loading) "جاري تحميل البيانات" else "النظام يعمل", color = White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    Text("البيانات المعروضة من الخادم الحقيقي", color = White.copy(alpha = .75f), fontSize = 10.sp)
+                    Text(if (loading) "جاري تحديث البيانات" else "النظام يعمل", color = White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text("تحديث تلقائي كل 15 ثانية", color = White.copy(alpha = .75f), fontSize = 10.sp)
                 }
             }
         }
