@@ -39,16 +39,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -79,10 +80,9 @@ private fun distanceKm(a: Coordinates, b: Coordinates): Double {
     val earthRadiusKm = 6371.0
     val dLat = Math.toRadians(b.lat - a.lat)
     val dLng = Math.toRadians(b.lng - a.lng)
-    val lat1 = Math.toRadians(a.lat)
-    val lat2 = Math.toRadians(b.lat)
     val h = kotlin.math.sin(dLat / 2).let { it * it } +
-        kotlin.math.cos(lat1) * kotlin.math.cos(lat2) * kotlin.math.sin(dLng / 2).let { it * it }
+        kotlin.math.cos(Math.toRadians(a.lat)) * kotlin.math.cos(Math.toRadians(b.lat)) *
+        kotlin.math.sin(dLng / 2).let { it * it }
     return 2.0 * earthRadiusKm * kotlin.math.asin(kotlin.math.sqrt(h.coerceIn(0.0, 1.0)))
 }
 
@@ -115,7 +115,9 @@ fun CustomerHomeMap(
     }
 
     val destinationAllowed = destination?.coordinates?.let { point ->
-        isInsideSyria(pickup) && isInsideSyria(point) && distanceKm(pickup, point) <= WASLHA_MAX_SERVICE_DISTANCE_KM
+        isInsideSyria(pickup) &&
+            isInsideSyria(point) &&
+            distanceKm(pickup, point) <= WASLHA_MAX_SERVICE_DISTANCE_KM
     } ?: true
 
     val serviceError = if (destination != null && !destinationAllowed) {
@@ -180,12 +182,7 @@ fun CustomerHomeMap(
                             .clip(RoundedCornerShape(4.dp))
                             .background(Color(0xFFD8DEDA))
                     )
-                    Text(
-                        "وين نوصلك؟",
-                        color = Ink,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black
-                    )
+                    Text("وين نوصلك؟", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
                     Text(
                         "حدد موقعك والوجهة ثم اختر السيارة المناسبة",
                         color = Muted,
@@ -229,12 +226,20 @@ fun CustomerHomeMap(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        PaymentChip("نقداً", paymentMethod == "cash", null) {
-                            paymentMethod = "cash"
-                        }
-                        PaymentChip("المحفظة", paymentMethod == "wallet", walletBalance) {
-                            paymentMethod = "wallet"
-                        }
+                        PaymentChip(
+                            modifier = Modifier.weight(1f),
+                            title = "نقداً",
+                            selected = paymentMethod == "cash",
+                            balance = null,
+                            onClick = { paymentMethod = "cash" }
+                        )
+                        PaymentChip(
+                            modifier = Modifier.weight(1f),
+                            title = "المحفظة",
+                            selected = paymentMethod == "wallet",
+                            balance = walletBalance,
+                            onClick = { paymentMethod = "wallet" }
+                        )
                     }
 
                     if (paymentMethod == "wallet") {
@@ -280,20 +285,13 @@ fun CustomerHomeMap(
                     }
 
                     if (!error.isNullOrBlank()) {
-                        Text(
-                            error,
-                            color = ErrorRed,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(error, color = ErrorRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
                         onClick = { if (canRequest) onRequest(paymentMethod) },
                         enabled = canRequest,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentPurple,
@@ -364,9 +362,7 @@ private fun DestinationFields(
                     start = Offset(size.width / 2f, 3.dp.toPx()),
                     end = Offset(size.width / 2f, size.height - 3.dp.toPx()),
                     strokeWidth = 1.4.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(4.dp.toPx(), 4.dp.toPx())
-                    )
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
                 )
             }
             RouteIconCircle(Icons.Default.LocationOn, Color(0xFFFFF0EE), Color(0xFFD93838))
@@ -469,39 +465,25 @@ private fun VehicleChip(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Un
     Card(
         onClick = onClick,
         modifier = Modifier,
-        colors = CardDefaults.cardColors(
-            if (selected) SurfaceSoftGreen else SurfaceSoft
-        ),
+        colors = CardDefaults.cardColors(if (selected) SurfaceSoftGreen else SurfaceSoft),
         shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(
-            1.dp,
-            if (selected) Primary else Line
-        ),
+        border = BorderStroke(1.dp, if (selected) Primary else Line),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.DirectionsCar,
-                null,
-                tint = Primary,
-                modifier = Modifier.size(18.dp)
-            )
+            Icon(Icons.Default.DirectionsCar, null, tint = Primary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text(
-                vehicle.title,
-                color = Ink,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text(vehicle.title, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun PaymentChip(
+    modifier: Modifier,
     title: String,
     selected: Boolean,
     balance: Long?,
@@ -509,15 +491,10 @@ private fun PaymentChip(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.weight(1f),
-        colors = CardDefaults.cardColors(
-            if (selected) SurfaceSoftGreen else SurfaceSoft
-        ),
+        modifier = modifier,
+        colors = CardDefaults.cardColors(if (selected) SurfaceSoftGreen else SurfaceSoft),
         shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(
-            1.dp,
-            if (selected) Primary else Line
-        ),
+        border = BorderStroke(1.dp, if (selected) Primary else Line),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -528,11 +505,7 @@ private fun PaymentChip(
             Column {
                 Text(title, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 if (balance != null) {
-                    Text(
-                        "${balance} ل.س",
-                        color = Primary,
-                        fontSize = 9.sp
-                    )
+                    Text("${balance} ل.س", color = Primary, fontSize = 9.sp)
                 }
             }
         }
