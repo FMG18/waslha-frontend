@@ -47,6 +47,18 @@ class TripRepository(private val api: WaslhaApi) {
         require(response.success && response.data != null) { response.message ?: "تعذر إلغاء الرحلة" }
         response.data.also { session.clearActiveTrip() }
     }
+
+    suspend fun messages(id: String, after: Long = 0L): Result<List<TripMessageDto>> = runCatching {
+        val response = api.tripMessages(id, after)
+        require(response.success && response.data != null) { response.message ?: "تعذر تحميل المحادثة" }
+        response.data
+    }
+
+    suspend fun sendMessage(id: String, text: String): Result<TripMessageDto> = runCatching {
+        val response = api.sendTripMessage(id, TripMessageRequest(text))
+        require(response.success && response.data != null) { response.message ?: "تعذر إرسال الرسالة" }
+        response.data
+    }
 }
 
 fun Trip.statusLabel(): String = when (status) {
