@@ -57,6 +57,10 @@ interface WaslhaApi {
     suspend fun savePlace(@Path("slot") slot: String, @Body body: SavedPlaceRequest): ApiEnvelope<SavedPlaceDto>
     @DELETE("/api/v1/customer/places/{id}")
     suspend fun deletePlace(@Path("id") id: String): ApiEnvelope<PlaceDeleteDto>
+    @GET("/api/v1/customer/nearby-drivers")
+    suspend fun nearbyDrivers(@Query("vehicleType") vehicleType: String? = null): ApiEnvelope<List<NearbyDriverDto>>
+    @POST("/api/v1/support/tickets")
+    suspend fun createSupportTicket(@Body body: SupportTicketRequest): ApiEnvelope<SupportTicketDto>
 }
 
 data class AppUpdateDto(val updateAvailable: Boolean, val versionName: String = "", val versionCode: Int = 0, val releaseNotes: String = "", val publishedAt: String? = null, val mandatory: Boolean = false, val apk: AppUpdateApkDto? = null)
@@ -71,18 +75,13 @@ data class MarkNotificationReadRequest(val userId: String)
 data class DeviceTokenRequest(val token: String)
 data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
 
-data class CustomerProfileDto(
-    val id: String,
-    val name: String = "",
-    val phone: String = "",
-    val email: String = "",
-    val picture: String = "",
-    val walletBalance: Long = 0L,
-    val currency: String = "SYP"
-)
+data class CustomerProfileDto(val id: String, val name: String = "", val phone: String = "", val email: String = "", val picture: String = "", val walletBalance: Long = 0L, val currency: String = "SYP")
 data class CustomerProfileUpdateRequest(val name: String? = null, val phone: String? = null, val picture: String? = null)
 data class AccountDeleteDto(val deleted: Boolean)
 data class WalletDto(val balance: Long = 0L, val currency: String = "SYP")
 data class SavedPlaceDto(val id: String, val type: String, val name: String, val latitude: Double, val longitude: Double, val updatedAt: Long = 0L)
 data class SavedPlaceRequest(val name: String, val latitude: Double, val longitude: Double)
 data class PlaceDeleteDto(val deleted: Boolean)
+data class NearbyDriverDto(val id: String, val type: String, val lat: Double, val lng: Double, val available: Boolean = true, val updatedAt: Long = 0L)
+data class SupportTicketRequest(val subject: String, val message: String, val category: String = "general", val tripId: String? = null)
+data class SupportTicketDto(val id: String, val userId: String, val category: String, val subject: String, val message: String, val tripId: String? = null, val status: String, val createdAt: Long = 0L)
