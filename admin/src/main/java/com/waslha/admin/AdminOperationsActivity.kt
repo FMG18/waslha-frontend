@@ -1,5 +1,6 @@
 package com.waslha.admin
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,6 +45,7 @@ class AdminOperationsActivity : ComponentActivity() {
 
 @Composable
 private fun AdminOperationsScreen(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var report by remember { mutableStateOf<AdminReportDto?>(null) }
     var tickets by remember { mutableStateOf<List<AdminSupportTicketDto>>(emptyList()) }
@@ -67,6 +69,7 @@ private fun AdminOperationsScreen(onBack: () -> Unit) {
     MaterialTheme {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("عمليات الإدارة", fontSize = 28.sp, fontWeight = FontWeight.Black); TextButton(onClick = onBack) { Text("رجوع") } } }
+            item { Button(onClick = { context.startActivity(Intent(context, AdminLiveMapActivity::class.java)) }, Modifier.fillMaxWidth()) { Text("فتح الخريطة الحية") } }
             item { Text("التقارير والإيرادات", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             report?.let { r ->
                 item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Text("كل الرحلات: ${r.totalTrips}"); Text("المكتملة: ${r.completedTrips}"); Text("الملغاة: ${r.cancelledTrips}"); Text("الجارية: ${r.activeTrips}"); Text("الإيراد: ${r.totalRevenue} ل.س"); Text("متوسط الرحلة: ${"%.0f".format(r.averageFare)} ل.س"); Text("الزبائن: ${r.totalCustomers}"); Text("الكباتن: ${r.totalDrivers} • متصلون: ${r.onlineDrivers}") } } }
