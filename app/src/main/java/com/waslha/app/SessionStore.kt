@@ -13,6 +13,7 @@ class SessionStore(context: Context) {
     val email: String? get() = prefs.getString("email", null)
     val name: String? get() = prefs.getString("name", null)
     val picture: String? get() = prefs.getString("picture", null)
+    val walletBalance: Long get() = prefs.getLong("walletBalance", 0L)
     val activeTripId: String? get() = prefs.getString("activeTripId", null)
     val isSignedIn: Boolean get() = !token.isNullOrBlank()
 
@@ -27,12 +28,18 @@ class SessionStore(context: Context) {
             .apply()
     }
 
-    fun updateProfile(name: String?, phone: String?, email: String?) {
+    fun updateProfile(name: String?, phone: String?, email: String? = email, picture: String? = picture, walletBalance: Long? = null) {
         prefs.edit()
             .putString("name", name)
             .putString("phone", phone)
             .putString("email", email)
+            .putString("picture", picture)
+            .apply { if (walletBalance != null) putLong("walletBalance", walletBalance) }
             .apply()
+    }
+
+    fun updateWallet(balance: Long) {
+        prefs.edit().putLong("walletBalance", balance.coerceAtLeast(0L)).apply()
     }
 
     fun setActiveTrip(tripId: String) {
