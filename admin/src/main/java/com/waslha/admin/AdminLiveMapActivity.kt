@@ -13,9 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,17 +23,15 @@ class AdminLiveMapActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AdminApiProvider.init(this)
         setContent {
-            var drivers by remember { mutableStateOf<List<AdminDriverDto>>(emptyList()) }
-            var error by remember { mutableStateOf<String?>(null) }
+            var trips by remember { mutableStateOf<List<AdminTripDto>>(emptyList()) }
             LaunchedEffect(Unit) {
                 while (true) {
-                    runCatching { AdminApiProvider.api.drivers() }
-                        .onSuccess { if (it.success) { drivers = it.data.orEmpty(); error = null } else error = it.message }
-                        .onFailure { error = it.message }
+                    runCatching { AdminApiProvider.api.trips() }
+                        .onSuccess { if (it.success) trips = it.data.orEmpty() }
                     delay(8000)
                 }
             }
-            Scaffold(topBar = { Text("الخريطة الحية — كباتن وصلها") }) { padding ->
+            Scaffold(topBar = { Text("الخريطة الحية — الرحلات") }) { _ ->
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { context ->
@@ -48,31 +44,33 @@ class AdminLiveMapActivity : ComponentActivity() {
                         }
                     },
                     update = { webView ->
-                        val payload = driversJson(drivers)
-                        val message = JSONObject().put("drivers", JSONArray(payload)).toString()
-                        webView.evaluateJavascript("window.updateDrivers(${JSONObject.quote(message)});", null)
+                        val payload = JSONObject().put("trips", JSONArray(tripsJson(trips))).toString()
+                        webView.evaluateJavascript("window.updateTrips(${JSONObject.quote(payload)});", null)
                     }
                 )
             }
         }
     }
 
-    private fun driversJson(drivers: List<AdminDriverDto>): List<JSONObject> = drivers.mapNotNull { d ->
-        val lat = d.lat ?: return@mapNotNull null
-        val lng = d.lng ?: return@mapNotNull null
-        JSONObject().apply {
-            put("id", d.id)
-            put("name", d.name.ifBlank { d.id })
-            put("lat", lat)
-            put("lng", lng)
-            put("available", d.available)
+    private fun tripsJson(trips: List<AdminTripDto>): List<JSONObject> = trips
+        .filter { it.pickup != null && it.destination != null && it.status !in listOf("completed", "cancelled") }
+        .map { t ->
+            JSONObject().apply {
+                put("id", t.id)
+                put("status", t.status)
+                put("fare", t.estimatedFare)
+                put("pickupLat", t.pickup!!.lat)
+                put("pickupLng", t.pickup!!.lng)
+                put("destLat", t.destination!!.lat)
+                put("destLng", t.destination!!.lng)
+                put("driver", t.driver?.name ?: "غير معين")
+            }
         }
-    }
 
     private fun html(): String = """
 <!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'><style>html,body,#map{margin:0;width:100%;height:100%;font-family:sans-serif}#badge{position:fixed;z-index:5000;top:12px;right:12px;background:#fff;padding:8px 12px;border-radius:18px;box-shadow:0 2px 12px #0002;font-size:12px}</style></head><body><div id='badge'>تحديث حي</div><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>
-const map=L.map('map').setView([33.5138,36.2913],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);const markers={};
-window.updateDrivers=function(raw){try{const obj=JSON.parse(raw);const list=obj.drivers||[];list.forEach(d=>{if(markers[d.id]){markers[d.id].setLatLng([d.lat,d.lng]);markers[d.id].setPopupContent('<b>'+d.name+'</b><br>'+((d.available)?'متاح':'غير متاح'));}else{markers[d.id]=L.marker([d.lat,d.lng]).addTo(map).bindPopup('<b>'+d.name+'</b><br>'+((d.available)?'متاح':'غير متاح'));}});document.getElementById('badge').textContent='كباتن على الخريطة: '+list.length;}catch(e){document.getElementById('badge').textContent='تعذر تحديث الخريطة';}};
+const map=L.map('map').setView([33.5138,36.2913],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);const layers={};
+window.updateTrips=function(raw){try{const obj=JSON.parse(raw);Object.values(layers).forEach(x=>{map.removeLayer(x.marker);map.removeLayer(x.line);});Object.keys(layers).forEach(k=>delete layers[k]);const list=obj.trips||[];list.forEach(t=>{const pickup=[t.pickupLat,t.pickupLng],dest=[t.destLat,t.destLng];const marker=L.marker(pickup).addTo(map).bindPopup('<b>رحلة #'+t.id.slice(-6)+'</b><br>الحالة: '+t.status+'<br>الكابتن: '+t.driver+'<br>الأجرة: '+t.fare+' ل.س');const line=L.polyline([pickup,dest],{weight:4}).addTo(map);layers[t.id]={id:t.id,marker:marker,line:line};});document.getElementById('badge').textContent='رحلات نشطة: '+list.length;}catch(e){document.getElementById('badge').textContent='تعذر تحديث الخريطة';}};
 </script></body></html>
 """.trimIndent()
 }
