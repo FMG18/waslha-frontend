@@ -227,24 +227,33 @@ private fun WaslhaCustomerApp(
     Surface(Modifier.fillMaxSize(), color = CBackground) {
         when (page) {
             CustomerPage.Home -> CustomerScaffold(page, { page = it }) {
-                CustomerHome(
-                    sessionStore, pickupLabel, destination, vehicle, estimate, estimateLoading, locationLoading, requesting, error,
+                CustomerHomeMap(
+                    sessionStore = sessionStore,
+                    pickup = pickup ?: Coordinates(33.5138, 36.2765),
+                    pickupLabel = pickupLabel,
+                    destination = destination,
+                    vehicle = vehicle,
+                    estimate = estimate,
+                    estimateLoading = estimateLoading,
+                    locationLoading = locationLoading,
+                    requesting = requesting,
+                    error = error,
                     onRefreshLocation = { if (permissionGranted) refreshLocation() else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
-                    onDestination = { page = CustomerPage.Map },
+                    onDestinationPicked = { coords -> destination = V2Destination("الموقع المحدد", "من الخريطة", coords) },
                     onVehicle = { vehicle = it },
-                    onRequest = {
+                    onRequest = { paymentMethod ->
                         val from = pickup
                         val to = destination
                         val userId = sessionStore.userId
                         when {
                             from == null -> error = "حدد موقع الانطلاق أولاً"
-                            to == null -> page = CustomerPage.Map
+                            to == null -> error = "حدد وجهتك أولاً"
                             userId.isNullOrBlank() -> error = "بيانات الحساب غير مكتملة"
                             else -> {
                                 requesting = true
                                 error = null
                                 scope.launch {
-                                    repo.create(TripRequest(userId, from, to.coordinates, vehicle.id, "cash"))
+                                    repo.create(TripRequest(userId, from, to.coordinates, vehicle.id, paymentMethod))
                                         .onSuccess { trip = it }
                                         .onFailure { error = it.message ?: "تعذر طلب التكسي" }
                                     requesting = false
@@ -300,108 +309,6 @@ private fun CustomerScaffold(page: CustomerPage, onPage: (CustomerPage) -> Unit,
             }
         }
     ) { padding -> Box(Modifier.fillMaxSize().padding(padding)) { content() } }
-}
-
-@Composable
-private fun CustomerHome(
-    sessionStore: SessionStore,
-    pickupLabel: String,
-    destination: V2Destination?,
-    vehicle: V2Vehicle,
-    estimate: FareEstimate?,
-    estimateLoading: Boolean,
-    locationLoading: Boolean,
-    requesting: Boolean,
-    error: String?,
-    onRefreshLocation: () -> Unit,
-    onDestination: () -> Unit,
-    onVehicle: (V2Vehicle) -> Unit,
-    onRequest: () -> Unit
-) {
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 24.dp)
-    ) {
-        item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("أهلًا${sessionStore.name?.takeIf { it.isNotBlank() }?.let { "، $it" } ?: " بك"}", color = CInk, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                    Text("جاهز لمشوارك؟", color = CMuted, fontSize = 12.sp)
-                }
-                Box(Modifier.size(48.dp).clip(CircleShape).background(CSoft), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.AccountCircle, "الحساب", tint = CPrimary, modifier = Modifier.size(32.dp))
-                }
-            }
-        }
-        item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), colors = CardDefaults.cardColors(CPrimary), elevation = CardDefaults.cardElevation(0.dp)) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("رحلتك تبدأ من هنا", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
-                            Text("وين نوصلك؟", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                        }
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(CAccent), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.DirectionsCar, null, tint = CPrimaryDark, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                    RoutePoint("من", pickupLabel, Icons.Default.MyLocation, false, locationLoading, onRefreshLocation)
-                    RouteConnector()
-                    RoutePoint("إلى", destination?.title ?: "اختيار وجهتك من الخريطة", Icons.Default.LocationOn, true, false, onDestination)
-                    if (destination != null) {
-                        Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Shield, null, tint = CAccent, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("تم تحديد الوجهة", color = Color.White.copy(alpha = .78f), fontSize = 10.sp)
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                SectionTitle("كيف تحب تكون الرحلة؟", "اختر السيارة الأنسب لك")
-                v2Vehicles.forEach { option -> VehicleRow(option, option.id == vehicle.id) { onVehicle(option) } }
-            }
-        }
-        item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(CWhite), shape = RoundedCornerShape(22.dp), border = BorderStroke(1.dp, CLine), elevation = CardDefaults.cardElevation(0.dp)) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(CSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.CreditCard, null, tint = CPrimary, modifier = Modifier.size(21.dp))
-                    }
-                    Spacer(Modifier.width(11.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("الدفع نقداً", color = CInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(when { estimateLoading -> "جاري حساب الأجرة…"; estimate != null -> "السعر التقديري للرحلة"; else -> "حدد الوجهة لعرض السعر" }, color = CMuted, fontSize = 10.sp)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        if (estimateLoading) CircularProgressIndicator(Modifier.size(18.dp), color = CPrimary, strokeWidth = 2.dp)
-                        else if (estimate != null) { Text("${estimate!!.estimatedFare}", color = CInk, fontWeight = FontWeight.Black, fontSize = 16.sp); Text(estimate!!.currency, color = CMuted, fontSize = 9.sp) }
-                        else Text("—", color = CMuted, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                    }
-                }
-                if (estimate != null) Row(Modifier.fillMaxWidth().background(CSoft2).padding(horizontal = 14.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("المسافة ${"%.1f".format(estimate!!.distanceKm)} كم", color = CMuted, fontSize = 10.sp)
-                    Text("المدة ${estimate!!.durationMin} دقيقة تقريباً", color = CMuted, fontSize = 10.sp)
-                }
-            }
-        }
-        item {
-            if (!error.isNullOrBlank()) {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFFFFF3F1)), shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color(0xFFF6C9C4))) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Info, null, tint = CDanger, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(7.dp)); Text(error, color = CDanger, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                }
-                Spacer(Modifier.height(8.dp))
-            }
-            Button(onClick = onRequest, enabled = !requesting, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(19.dp), colors = ButtonDefaults.buttonColors(containerColor = CPurple, disabledContainerColor = CPurple.copy(alpha = .55f))) {
-                if (requesting) CircularProgressIndicator(Modifier.size(21.dp), color = Color.White, strokeWidth = 2.dp)
-                else Row(verticalAlignment = Alignment.CenterVertically) { Text("اطلب التكسي", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp); Spacer(Modifier.width(8.dp)); Icon(Icons.Default.DirectionsCar, null, modifier = Modifier.size(21.dp)) }
-            }
-        }
-        item { Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Shield, null, tint = CPrimary, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("حجز واضح وسريع داخل سوريا", color = CMuted, fontSize = 10.sp) } }
-    }
 }
 
 @Composable
