@@ -28,7 +28,6 @@
         <activity android:name=".TaxiBookingActivity" android:exported="false" />
         <activity android:name=".TripResumeActivity" android:exported="false" />
         <activity android:name=".WaslhaCustomerActivity" android:exported="false" />
-        <activity android:name=".CustomerRideExperienceActivity" android:exported="false" />
         <service
             android:name=".WaslhaFirebaseMessagingService"
             android:exported="false">
