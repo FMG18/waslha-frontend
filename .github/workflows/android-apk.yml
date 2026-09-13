@@ -67,51 +67,53 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Patch customer Kotlin compatibility and normalize customer entry paths
+      - name: Patch customer Kotlin compatibility and normalize customer sources
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          taxi = Path('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt')
-          s = taxi.read_text(encoding='utf-8')
-          s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
-          if 'import androidx.compose.foundation.layout.RowScope\n' not in s:
-              s = s.replace('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n')
-          s = s.replace('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:')
-          taxi.write_text(s, encoding='utf-8')
+          def patch(path, replacements):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              for old, new in replacements:
+                  s = s.replace(old, new)
+              p.write_text(s, encoding='utf-8')
 
-          trip = Path('app/src/main/java/com/waslha/app/TripExperience.kt')
-          s = trip.read_text(encoding='utf-8')
-          if 'import androidx.compose.material.icons.filled.MyLocation\n' not in s:
-              s = s.replace('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n')
-          trip.write_text(s, encoding='utf-8')
+          patch('app/src/main/java/com/waslha/app/TaxiBookingActivity.kt', [
+              ('import androidx.compose.foundation.layout.weight\n', ''),
+              ('import androidx.compose.foundation.layout.Row\n', 'import androidx.compose.foundation.layout.Row\nimport androidx.compose.foundation.layout.RowScope\n'),
+              ('private fun BottomItem(icon:', 'private fun RowScope.BottomItem(icon:')
+          ])
 
-          pf = Path('app/src/main/java/com/waslha/app/PassengerFeatures.kt')
-          s = pf.read_text(encoding='utf-8')
-          s = s.replace('import androidx.compose.foundation.layout.weight\n', '')
-          pf.write_text(s, encoding='utf-8')
+          patch('app/src/main/java/com/waslha/app/TripExperience.kt', [
+              ('import androidx.compose.material.icons.filled.LocationOn\n', 'import androidx.compose.material.icons.filled.LocationOn\nimport androidx.compose.material.icons.filled.MyLocation\n')
+          ])
 
-          customer = Path('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt')
-          s = customer.read_text(encoding='utf-8')
-          old_about = 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }'
-          new_about = 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'
-          s = s.replace(old_about, new_about)
-          old_session = 'val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)'
-          new_session = 'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'
-          s = s.replace(old_session, new_session)
-          s = s.replace('"1.4.5"', 'BuildConfig.VERSION_NAME')
-          s = s.replace('"v1.4.5"', '"v${BuildConfig.VERSION_NAME}"')
-          customer.write_text(s, encoding='utf-8')
+          patch('app/src/main/java/com/waslha/app/PassengerFeatures.kt', [
+              ('import androidx.compose.foundation.layout.weight\n', '')
+          ])
+
+          patch('app/src/main/java/com/waslha/app/WaslhaCustomerActivity.kt', [
+              ('CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }', 'CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { CurrentAboutScreen { page = CustomerPage.Profile } }'),
+              ('val sessionStore = SessionStore(this)\n        val locationProvider = LocationProvider(this)', 'val sessionStore = SessionStore(this)\n        FcmRegistration.register(applicationContext)\n        val locationProvider = LocationProvider(this)'),
+              ('"1.4.5"', 'BuildConfig.VERSION_NAME'),
+              ('"v1.4.5"', '"v${BuildConfig.VERSION_NAME}"')
+          ])
+
+          patch('app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt', [
+              ('import com.mapbox.maps.MapboxOptions\n', 'import com.mapbox.common.MapboxOptions\n'),
+              ('import androidx.compose.ui.unit.sp\n', 'import androidx.compose.ui.unit.sp\nimport androidx.compose.ui.text.font.FontWeight\n'),
+              ('Card(Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick),', 'Card(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),')
+          ])
           PY
 
-      - name: Verify customer app has no legacy version literal
+      - name: Verify customer source invariants
         shell: bash
         run: |
-          ! grep -R --fixed-strings '1.4.5' app/src/main/java/com/waslha/app || {
-            echo 'Legacy version 1.4.5 still exists in customer sources'
-            exit 1
-          }
+          ! grep -R --fixed-strings '1.4.5' app/src/main/java/com/waslha/app || { echo 'Legacy version literal remains'; exit 1; }
+          grep -q 'class CustomerRideExperienceActivity' app/src/main/java/com/waslha/app/CustomerRideExperienceActivity.kt
+          grep -q 'fun nearbyDrivers' app/src/main/java/com/waslha/app/CustomerRepository.kt
 
       - name: Build signed release APK
         run: |
@@ -135,4 +137,4 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
-# Customer-only release workflow: captain module is intentionally excluded.
+# Customer-only release workflow: captain and admin modules are intentionally excluded.
