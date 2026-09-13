@@ -25,6 +25,7 @@ data class AdminCoordinates(val lat: Double = 0.0, val lng: Double = 0.0)
 data class AdminDriverDto(val id: String, val name: String = "", val type: String = "economy", val available: Boolean = false, val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val phone: String? = null, val lat: Double? = null, val lng: Double? = null, val lastLocationAt: Long? = null)
 data class AdminTripDto(val id: String, val status: String = "", val customerId: String = "", val estimatedFare: Int = 0, val currency: String = "ل.س", val vehicleType: String = "economy", val driver: AdminDriverDto? = null, val pickup: AdminCoordinates? = null, val destination: AdminCoordinates? = null, val distanceKm: Double = 0.0, val durationMin: Int = 0, val paymentMethod: String = "cash")
 data class AdminOverview(val totals: AdminTotals, val latestTrips: List<AdminTripDto> = emptyList())
+data class AdminMapSnapshot(val updatedAt: Long = 0L, val trips: List<AdminTripDto> = emptyList(), val drivers: List<AdminDriverDto> = emptyList())
 data class AdminDriverAssignRequest(val driverId: String)
 data class AdminStatusRequest(val status: String)
 data class AdminCancelRequest(val reason: String = "admin_cancel")
@@ -41,6 +42,7 @@ interface AdminApi {
     @POST("api/v1/auth/request-code") suspend fun requestCode(@Body body: CodeRequest): Envelope<CodeResponse>
     @POST("api/v1/auth/verify-code") suspend fun verifyCode(@Body body: VerifyRequest): Envelope<Session>
     @GET("api/v1/admin/overview") suspend fun overview(): Envelope<AdminOverview>
+    @GET("api/v1/admin/map") suspend fun mapSnapshot(): Envelope<AdminMapSnapshot>
     @GET("api/v1/admin/trips") suspend fun trips(): Envelope<List<AdminTripDto>>
     @GET("api/v1/admin/trips/{id}") suspend fun trip(@Path("id") id: String): Envelope<AdminTripDto>
     @POST("api/v1/admin/trips/{id}/assign-driver") suspend fun assignDriver(@Path("id") id: String, @Body body: AdminDriverAssignRequest): Envelope<AdminTripDto>
