@@ -42,4 +42,10 @@ class CustomerRepository(private val api: WaslhaApi = ApiProvider.api) {
         require(response.success && response.data != null) { response.message ?: "تعذر حذف الحساب" }
         response.data.deleted
     }
+
+    suspend fun nearbyDrivers(vehicleType: String? = null): Result<List<NearbyDriverDto>> = runCatching {
+        val response = api.nearbyDrivers(vehicleType)
+        require(response.success && response.data != null) { response.message ?: "تعذر تحميل الكباتن القريبين" }
+        response.data
+    }
 }
