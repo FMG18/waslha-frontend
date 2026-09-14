@@ -13,8 +13,8 @@ android {
         applicationId = "com.waslha.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 149
-        versionName = "1.4.9"
+        versionCode = 150
+        versionName = "1.4.10"
     }
 
     compileOptions {
