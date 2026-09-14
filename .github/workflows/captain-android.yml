@@ -25,6 +25,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Prepare Mapbox token resource
+        shell: bash
+        env:
+          MAPBOX_PUBLIC_TOKEN: ${{ vars.MAPBOX_PUBLIC_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$MAPBOX_PUBLIC_TOKEN" || { echo "MAPBOX_PUBLIC_TOKEN is not configured"; exit 1; }
+          mkdir -p captain/src/main/res/values
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' "    <string name=\"mapbox_access_token\" translatable=\"false\">${MAPBOX_PUBLIC_TOKEN}</string>" '</resources>' > captain/src/main/res/values/mapbox_access_token.xml
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
