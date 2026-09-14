@@ -1,9 +1,6 @@
 package com.waslha.captain
 
 import android.content.Context
-import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -89,14 +86,13 @@ interface CaptainApi {
 
 object CaptainApiProvider {
     private var initialized = false
-    private lateinit var appContext: Context
     private lateinit var realApi: CaptainApi
     lateinit var api: CaptainApi
         private set
 
     fun init(context: Context) {
         if (initialized) return
-        appContext = context.applicationContext
+        val appContext = context.applicationContext
         val prefs = appContext.getSharedPreferences("waslha_captain", Context.MODE_PRIVATE)
         val authInterceptor = Interceptor { chain ->
             val builder = chain.request().newBuilder()
@@ -119,23 +115,7 @@ object CaptainApiProvider {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(CaptainApi::class.java)
-        api = object : CaptainApi by realApi {
-            override suspend fun acceptTrip(id: String): ApiEnvelope<Trip> {
-                val result = realApi.acceptTrip(id)
-                result.data?.let { trip ->
-                    if (result.success) {
-                        Handler(Looper.getMainLooper()).post {
-                            appContext.startActivity(
-                                Intent(appContext, CaptainTripActivity::class.java)
-                                    .putExtra(CaptainTripActivity.EXTRA_TRIP_ID, trip.id)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        }
-                    }
-                }
-                return result
-            }
-        }
+        api = realApi
         initialized = true
     }
 }
