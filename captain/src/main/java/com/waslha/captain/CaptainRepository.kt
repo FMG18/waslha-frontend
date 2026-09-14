@@ -3,7 +3,6 @@ package com.waslha.captain
 import kotlinx.coroutines.delay
 import retrofit2.HttpException
 import java.io.IOException
-import kotlin.math.min
 
 class CaptainRepository {
     private val api: CaptainApi
@@ -65,23 +64,3 @@ class CaptainRepository {
         return false
     }
 }
-
-data class DriverRatingRequest(
-    val tripId: String,
-    val customerId: String,
-    val driverId: String,
-    val score: Int,
-    val comment: String = ""
-)
-
-data class DriverRating(
-    val id: String,
-    val tripId: String,
-    val customerId: String,
-    val driverId: String,
-    val score: Int,
-    val comment: String = "",
-    val createdAt: Long = 0L
-)
-
-fun retryDelay(attempt: Int): Long = min(1800L, 350L * (1 shl attempt.coerceIn(0, 3)))
