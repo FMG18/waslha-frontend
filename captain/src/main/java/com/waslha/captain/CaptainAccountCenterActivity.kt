@@ -18,15 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val AGreen = Color(0xFF0B805E)
-private val ADark = Color(0xFF075B43)
 private val AMint = Color(0xFFE8F5F0)
 private val ABg = Color(0xFFF4F7F6)
 private val AInk = Color(0xFF14211C)
@@ -69,11 +68,7 @@ private fun AccountCenter(onBack: () -> Unit) {
             .onSuccess { response ->
                 driver = response.data
                 val id = response.data?.id.orEmpty()
-                if (id.isNotBlank()) {
-                    runCatching { CaptainApiProvider.api.notifications(id) }
-                        .onSuccess { notifications = it.data.orEmpty() }
-                        .onFailure { error = it.message ?: "تعذر تحميل الإشعارات" }
-                }
+                if (id.isNotBlank()) runCatching { CaptainApiProvider.api.notifications(id) }.onSuccess { notifications = it.data.orEmpty() }
             }
             .onFailure { error = it.message ?: "تعذر تحميل الحساب" }
     }
@@ -81,12 +76,9 @@ private fun AccountCenter(onBack: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                BoxBack(onBack)
+                Box(Modifier.size(42.dp).background(AWhite, CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) { Text("‹", color = AInk, fontSize = 27.sp) }
                 Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("الحساب والإعدادات", color = AInk, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("إدارة بياناتك وكل ما يخص حساب الكابتن", color = AMuted, fontSize = 10.sp)
-                }
+                Column(Modifier.weight(1f)) { Text("الحساب والإعدادات", color = AInk, fontSize = 24.sp, fontWeight = FontWeight.Black); Text("إدارة بياناتك وكل ما يخص حساب الكابتن", color = AMuted, fontSize = 10.sp) }
             }
         }
         item {
@@ -94,38 +86,32 @@ private fun AccountCenter(onBack: () -> Unit) {
                 Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(62.dp).background(AMint, CircleShape), contentAlignment = Alignment.Center) { Text("و", color = AGreen, fontSize = 26.sp, fontWeight = FontWeight.Black) }
                     Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(driver?.name?.ifBlank { "الكابتن" } ?: "الكابتن", color = AInk, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                        Text(driver?.phone ?: "", color = AMuted, fontSize = 10.sp)
-                    }
-                    Surface(color = if (driver?.available == true) AMint else Color(0xFFF1F2F1), shape = RoundedCornerShape(999.dp)) {
-                        Text(if (driver?.available == true) "متصل" else "غير متصل", Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = if (driver?.available == true) AGreen else AMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Column(Modifier.weight(1f)) { Text(driver?.name?.ifBlank { "الكابتن" } ?: "الكابتن", color = AInk, fontSize = 19.sp, fontWeight = FontWeight.Black); Text(driver?.phone ?: "+963", color = AMuted, fontSize = 10.sp) }
                 }
             }
         }
         item { AccountSectionTitle("الملف والمركبة") }
         item { AccountRow("المعلومات الشخصية", "الاسم ورقم الهاتف") {} }
         item { AccountRow("المركبة", listOfNotBlank(driver?.vehicle, driver?.plate).ifBlank { "بيانات المركبة غير مكتملة" }) {} }
-        item { AccountRow("المستندات", "حالة المستندات والاعتماد") {} }
+        item { AccountRow("الملف والمستندات", "الهوية، رخصة القيادة، وأوراق السيارة") { context.startActivity(Intent(context, CaptainDocumentsActivity::class.java)) } }
+        item { AccountSectionTitle("التنبيهات والمساعدة") }
+        item { AccountRow("الإشعارات", if (notifications.isEmpty()) "لا توجد إشعارات جديدة" else "${notifications.count { !it.read }} غير مقروء") { context.startActivity(Intent(context, CaptainNotificationsActivity::class.java)) } }
+        item { AccountRow("الدعم", "تواصل مع فريق وصلها عند وجود مشكلة") {} }
+        item { AccountRow("اللغة", "العربية • العملة ل.س") {} }
+        error?.let { message -> item { Text(message, color = ARed, fontSize = 10.sp) } }
         item {
-            AccountRow("الإشعارات", if (notifications.isEmpty()) "لا توجد إشعارات جديدة" else "${notifications.count { !it.read }} غير مقروء") {
-                context.startActivity(Intent(context, CaptainNotificationsActivity::class.java))
+            Button(onClick = {
+                getLocalSession(context).clear()
+                val intent = Intent(context, CaptainLiveActivity::class.java).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK) }
+                context.startActivity(intent)
+            }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = ARed, contentColor = AWhite)) {
+                Text("تسجيل الخروج", fontWeight = FontWeight.Black)
             }
         }
-        item { AccountSectionTitle("المساعدة") }
-        item { AccountRow("الدعم", "تواصل مع فريق وصلها عند وجود مشكلة") {} }
-        item { AccountRow("الأسئلة الشائعة", "إجابات عن العمل والرحلات والأرباح") {} }
-        item { AccountSectionTitle("الإعدادات") }
-        item { AccountRow("اللغة", "العربية") {} }
-        item { AccountRow("إشعارات الرحلات", "تنبيهات الرحلات والأخبار") { context.startActivity(Intent(context, CaptainNotificationsActivity::class.java)) } }
-        item { AccountRow("الخصوصية والأمان", "حماية الحساب والجلسة") {} }
-        error?.let { message -> item { Text(message, color = ARed, fontSize = 10.sp) } }
-        item { TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("العودة", color = AGreen, fontWeight = FontWeight.Bold) } }
     }
 }
 
-@Composable private fun BoxBack(onBack: () -> Unit) { Box(Modifier.size(42.dp).background(AWhite, CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) { Text("‹", color = AInk, fontSize = 27.sp) } }
+private fun getLocalSession(context: android.content.Context) = CaptainSession(context)
 @Composable private fun AccountSectionTitle(text: String) { Text(text, color = AInk, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 5.dp)) }
 @Composable private fun AccountRow(title: String, subtitle: String, onClick: () -> Unit) { Card(Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(AWhite)) { Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(40.dp).background(AMint, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) { Text("•", color = AGreen, fontSize = 18.sp) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(title, color = AInk, fontSize = 12.sp, fontWeight = FontWeight.Black); Text(subtitle, color = AMuted, fontSize = 9.sp) }; Text("‹", color = AMuted, fontSize = 22.sp) } } }
 private fun listOfNotBlank(vehicle: String?, plate: String?): String = listOf(vehicle, plate).filter { !it.isNullOrBlank() }.joinToString(" • ")
