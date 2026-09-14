@@ -1,5 +1,6 @@
 package com.waslha.app
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,10 +40,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,6 +163,11 @@ fun WaslhaRideMap(
         )
     }
 
+    fun pickMapCenter() {
+        val center = viewport.cameraState?.center ?: return
+        onDestinationPicked(Coordinates(center.latitude(), center.longitude()))
+    }
+
     Box(modifier.background(Color(0xFFEAF1EE))) {
         if (accessToken.isBlank() || accessToken.startsWith("YOUR_")) {
             Card(
@@ -183,10 +189,12 @@ fun WaslhaRideMap(
                 modifier = Modifier.fillMaxSize(),
                 mapViewportState = viewport,
                 style = { MapboxStandardStyle() },
-                onMapClickListener = {
-                    val center = viewport.cameraState?.center
-                    if (center != null) onDestinationPicked(Coordinates(center.latitude(), center.longitude()))
+                onMapClickListener = { clickedPoint ->
+                    onDestinationPicked(Coordinates(clickedPoint.latitude(), clickedPoint.longitude()))
                     true
+                },
+                onMapIdleListener = {
+                    if (searchOpen.not()) pickMapCenter()
                 }
             ) {
                 routeResult?.let { result ->
@@ -228,7 +236,7 @@ fun WaslhaRideMap(
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                         Text(if (destination == null) "ابحث عن وجهتك" else "الوجهة محددة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-                        Text(if (destination == null) "ابحث باسم المكان أو استخدم المؤشر" else "يمكنك البحث لتغيير الوجهة", fontSize = 9.sp, color = Color(0xFF72807B))
+                        Text(if (destination == null) "ابحث باسم المكان أو حرّك الخريطة" else "يمكنك البحث أو تحريك الخريطة لتغيير الوجهة", fontSize = 9.sp, color = Color(0xFF72807B))
                     }
                     Icon(Icons.Default.LocationOn, null, tint = Color(0xFF087F5B), modifier = Modifier.size(20.dp))
                 }
@@ -259,7 +267,7 @@ fun WaslhaRideMap(
                         }
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF4F8F6)).padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.MyLocation, null, tint = Color(0xFF087F5B), modifier = Modifier.size(14.dp))
-                            Text("المسار محسوب عبر الطريق الأقرب", Modifier.padding(horizontal = 6.dp), fontSize = 9.sp, color = Color(0xFF6D7A75))
+                            Text("حرّك الخريطة حتى يصبح المؤشر الأحمر فوق المكان المطلوب", Modifier.padding(horizontal = 6.dp), fontSize = 9.sp, color = Color(0xFF6D7A75))
                         }
                     }
                 }
@@ -281,8 +289,12 @@ fun WaslhaRideMap(
             }
 
             if (searchOpen) {
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .22f)))
-                Card(Modifier.align(Alignment.TopCenter).padding(top = 12.dp, start = 12.dp, end = 12.dp).fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(24.dp), elevation = CardDefaults.cardElevation(10.dp)) {
+                Card(
+                    Modifier.align(Alignment.TopCenter).padding(top = 12.dp, start = 12.dp, end = 12.dp).fillMaxWidth(),
+                    colors = CardDefaults.cardColors(Color.White),
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(10.dp)
+                ) {
                     Column(Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { searchOpen = false; keyboard?.hide() }) { Icon(Icons.Default.Close, "إغلاق", tint = Color(0xFF10201B)) }
@@ -303,9 +315,7 @@ fun WaslhaRideMap(
                             searching -> Box(Modifier.fillMaxWidth().padding(vertical = 22.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), color = Color(0xFF087F5B)) }
                             searchError != null -> Text(searchError!!, color = Color(0xFFB42318), fontSize = 11.sp, modifier = Modifier.padding(10.dp))
                             results.isNotEmpty() -> LazyColumn(Modifier.fillMaxWidth().height(360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(results, key = { it.id }) { place ->
-                                    PlaceResultRow(place, onClick = { selectPlace(place) })
-                                }
+                                items(results, key = { it.id }) { place -> PlaceResultRow(place, onClick = { selectPlace(place) }) }
                             }
                             query.trim().length >= 2 -> Text("لا توجد نتائج لهذا البحث", color = Color(0xFF72807B), fontSize = 11.sp, modifier = Modifier.padding(14.dp))
                             recent.isNotEmpty() -> {
