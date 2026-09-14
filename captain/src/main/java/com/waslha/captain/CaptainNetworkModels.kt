@@ -14,6 +14,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import java.util.concurrent.TimeUnit
 
 data class ApiEnvelope<T>(val success: Boolean, val data: T? = null, val message: String? = null)
 data class OtpRequest(val phone: String)
@@ -37,7 +38,24 @@ data class Driver(
     val documents: DriverDocuments? = null
 )
 data class Coordinates(val lat: Double, val lng: Double)
-data class Trip(val id: String, val customerId: String = "", val customerName: String? = null, val customerPhone: String? = null, val pickup: Coordinates, val destination: Coordinates, val vehicleType: String = "economy", val paymentMethod: String = "cash", val distanceKm: Double = 0.0, val durationMin: Int = 0, val currency: String = "ل.س", val estimatedFare: Int = 0, val status: String = "searching", val driver: Driver? = null, val createdAt: Long = 0L, val updatedAt: Long = 0L)
+data class Trip(
+    val id: String,
+    val customerId: String = "",
+    val customerName: String? = null,
+    val customerPhone: String? = null,
+    val pickup: Coordinates,
+    val destination: Coordinates,
+    val vehicleType: String = "economy",
+    val paymentMethod: String = "cash",
+    val distanceKm: Double = 0.0,
+    val durationMin: Int = 0,
+    val currency: String = "ل.س",
+    val estimatedFare: Int = 0,
+    val status: String = "searching",
+    val driver: Driver? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+)
 data class DriverAvailabilityRequest(val available: Boolean)
 data class DriverLocationRequest(val lat: Double, val lng: Double)
 data class TripStatusRequest(val status: String)
@@ -45,7 +63,8 @@ data class DeviceTokenRequest(val token: String)
 data class CaptainNotification(val id: String, val title: String, val body: String, val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
 data class TripMessage(val id: String, val tripId: String, val senderId: String, val senderRole: String, val text: String, val createdAt: Long = 0L)
 data class TripMessageRequest(val text: String)
-
+data class DriverRatingRequest(val tripId: String, val customerId: String, val driverId: String, val score: Int, val comment: String = "")
+data class DriverRating(val id: String, val tripId: String, val customerId: String, val driverId: String, val score: Int, val comment: String = "", val createdAt: Long = 0L)
 data class CaptainSessionData(val userId: String, val phone: String, val token: String, val role: String)
 
 interface CaptainApi {
@@ -61,6 +80,7 @@ interface CaptainApi {
     @GET("api/v1/captain/trips/{id}") suspend fun trip(@Path("id") id: String): ApiEnvelope<Trip>
     @GET("api/v1/trips/{id}/messages") suspend fun tripMessages(@Path("id") id: String, @Query("after") after: Long = 0L): ApiEnvelope<List<TripMessage>>
     @POST("api/v1/trips/{id}/messages") suspend fun sendTripMessage(@Path("id") id: String, @Body body: TripMessageRequest): ApiEnvelope<TripMessage>
+    @POST("api/v1/ratings") suspend fun createRating(@Body body: DriverRatingRequest): ApiEnvelope<DriverRating>
     @GET("api/v1/notifications") suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<CaptainNotification>>
     @POST("api/v1/notifications/device-token") suspend fun registerDevice(@Body body: DeviceTokenRequest): ApiEnvelope<Map<String, Any>>
 }
@@ -83,15 +103,31 @@ object CaptainApiProvider {
             }
             chain.proceed(builder.build())
         }
-        val client = OkHttpClient.Builder().addInterceptor(authInterceptor).build()
-        realApi = Retrofit.Builder().baseUrl(BASE_URL).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(CaptainApi::class.java)
+        val client = OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+        realApi = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(CaptainApi::class.java)
         api = object : CaptainApi by realApi {
             override suspend fun acceptTrip(id: String): ApiEnvelope<Trip> {
                 val result = realApi.acceptTrip(id)
                 result.data?.let { trip ->
                     if (result.success) {
                         Handler(Looper.getMainLooper()).post {
-                            appContext.startActivity(Intent(appContext, CaptainTripActivity::class.java).putExtra(CaptainTripActivity.EXTRA_TRIP_ID, trip.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            appContext.startActivity(
+                                Intent(appContext, CaptainTripActivity::class.java)
+                                    .putExtra(CaptainTripActivity.EXTRA_TRIP_ID, trip.id)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
                         }
                     }
                 }
