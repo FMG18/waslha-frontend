@@ -27,7 +27,7 @@ class CaptainLocationReporter(context: Context) {
     private var lastSentAt = 0L
 
     @SuppressLint("MissingPermission")
-    fun start(onLocation: (Coordinates) -> Unit) {
+    fun start(onLocation: (Coordinates) -> Unit, shouldReportToServer: () -> Boolean = { true }) {
         if (!hasPermission()) return
         stop()
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
@@ -39,6 +39,7 @@ class CaptainLocationReporter(context: Context) {
                 val location = result.lastLocation ?: return
                 val point = Coordinates(location.latitude, location.longitude)
                 onLocation(point)
+                if (!shouldReportToServer()) return
                 val now = System.currentTimeMillis()
                 if (now - lastSentAt >= 3000L) {
                     lastSentAt = now
