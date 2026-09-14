@@ -1,13 +1,32 @@
 package com.waslha.captain
 
-import android.annotation.SuppressLint
-import android.webkit.WebSettings
-import android.webkit.WebView
+import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mapbox.common.MapboxOptions
+import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.extension.compose.MapboxMap
+import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotation
+import com.mapbox.maps.extension.compose.style.standard.MapboxStandardStyle
 
-@SuppressLint("SetJavaScriptEnabled")
+private val FallbackDamascus = Point.fromLngLat(36.2765, 33.5138)
+
 @Composable
 fun CaptainLiveMap(
     modifier: Modifier = Modifier,
@@ -15,61 +34,63 @@ fun CaptainLiveMap(
     pickup: Coordinates? = null,
     destination: Coordinates? = null,
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.cacheMode = WebSettings.LOAD_DEFAULT
-                setBackgroundColor(0xFFE8EFEB.toInt())
-                loadDataWithBaseURL("https://localhost/", HTML, "text/html", "UTF-8", null)
-            }
-        },
-        update = { web ->
-            val d = driver ?: return@AndroidView
-            val p = pickup
-            val dest = destination
-            val js = buildString {
-                append("window.updateDriver(${d.lat},${d.lng});")
-                if (p != null) append("window.setPickup(${p.lat},${p.lng});") else append("window.clearPickup();")
-                if (dest != null) append("window.setDestination(${dest.lat},${dest.lng});") else append("window.clearDestination();")
-                if (p != null && dest != null) append("window.fitTrip();") else append("window.centerDriver();")
-            }
-            web.evaluateJavascript(js, null)
-        }
-    )
-}
+    val context = LocalContext.current
+    val accessToken = remember { context.resources.getString(R.string.mapbox_access_token).trim() }
+    val center = driver?.let { Point.fromLngLat(it.lng, it.lat) } ?: pickup?.let { Point.fromLngLat(it.lng, it.lat) } ?: FallbackDamascus
 
-private val HTML = """
-<!doctype html>
-<html dir='rtl'>
-<head>
-<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>
-<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>
-<style>
-html,body,#map{height:100%;margin:0;background:#e8efeb;font-family:Arial,sans-serif}
-.leaflet-control-attribution{font-size:8px}
-.pin{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.25);font-size:15px}
-.driver{background:#0b805e}.pickup{background:#075b43}.dest{background:#b42318}
-</style>
-</head>
-<body>
-<div id='map'></div>
-<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
-<script>
-const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([33.5138,36.2765],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-const icon=(cls,text)=>L.divIcon({className:'',html:'<div class="pin '+cls+'">'+text+'</div>',iconSize:[36,36],iconAnchor:[18,18]});
-let driverMarker=null,pickupMarker=null,destMarker=null;
-function updateDriver(lat,lng){if(!driverMarker){driverMarker=L.marker([lat,lng],{icon:icon('driver','و')}).addTo(map)}else driverMarker.setLatLng([lat,lng]);}
-function setPickup(lat,lng){if(!pickupMarker) pickupMarker=L.marker([lat,lng],{icon:icon('pickup','↑')}).addTo(map);else pickupMarker.setLatLng([lat,lng]);}
-function clearPickup(){if(pickupMarker){map.removeLayer(pickupMarker);pickupMarker=null}}
-function setDestination(lat,lng){if(!destMarker) destMarker=L.marker([lat,lng],{icon:icon('dest','●')}).addTo(map);else destMarker.setLatLng([lat,lng]);}
-function clearDestination(){if(destMarker){map.removeLayer(destMarker);destMarker=null}}
-function centerDriver(){if(driverMarker)map.setView(driverMarker.getLatLng(),15,{animate:true})}
-function fitTrip(){const pts=[];if(driverMarker)pts.push(driverMarker.getLatLng());if(pickupMarker)pts.push(pickupMarker.getLatLng());if(destMarker)pts.push(destMarker.getLatLng());if(pts.length>1)map.fitBounds(L.latLngBounds(pts),{padding:[35,35]});}
-</script>
-</body>
-</html>
-""".trimIndent()
+    if (accessToken.isNotBlank() && !accessToken.startsWith("YOUR_")) {
+        MapboxOptions.accessToken = accessToken
+    }
+
+    if (accessToken.isBlank() || accessToken.startsWith("YOUR_")) {
+        Box(modifier.background(Color(0xFFE8EFEB)), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(76.dp).clip(CircleShape).background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("الخريطة", color = Color(0xFF075B43), fontSize = 12.sp, fontWeight = FontWeight.Black)
+            }
+        }
+        return
+    }
+
+    val viewport = rememberMapViewportState {
+        setCameraOptions {
+            center(center)
+            zoom(14.0)
+            pitch(0.0)
+            bearing(0.0)
+        }
+    }
+
+    MapboxMap(
+        modifier = modifier,
+        mapViewportState = viewport,
+        style = { MapboxStandardStyle() }
+    ) {
+        driver?.let {
+            CircleAnnotation(point = Point.fromLngLat(it.lng, it.lat)) {
+                circleRadius = 9.0
+                circleColor = Color(0xFF0B805E)
+                circleStrokeWidth = 3.0
+                circleStrokeColor = Color.White
+            }
+        }
+        pickup?.let {
+            CircleAnnotation(point = Point.fromLngLat(it.lng, it.lat)) {
+                circleRadius = 8.0
+                circleColor = Color(0xFF075B43)
+                circleStrokeWidth = 2.0
+                circleStrokeColor = Color.White
+            }
+        }
+        destination?.let {
+            CircleAnnotation(point = Point.fromLngLat(it.lng, it.lat)) {
+                circleRadius = 8.0
+                circleColor = Color(0xFFB42318)
+                circleStrokeWidth = 2.0
+                circleStrokeColor = Color.White
+            }
+        }
+    }
+}
