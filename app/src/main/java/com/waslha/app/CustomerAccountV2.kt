@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -237,66 +238,49 @@ fun CustomerSettingsV2(session: SessionStore, onBack: () -> Unit, onNotification
 fun CustomerPaymentsV2(onBack: () -> Unit) {
     val scope = rememberCoroutineScope(); val repo = remember { CustomerRepository() }
     var wallet by remember { mutableStateOf<WalletDto?>(null) }; var selected by remember { mutableStateOf("cash") }; var loading by remember { mutableStateOf(true) }; var message by remember { mutableStateOf<String?>(null) }; var showTopUp by remember { mutableStateOf(false) }; var amount by remember { mutableStateOf("") }; var topUpLoading by remember { mutableStateOf(false) }
-    fun refresh() = scope.launch { loading = true; repo.wallet().onSuccess { wallet = it }.onFailure { message = it.message ?: "تعذر تحميل الرصيد" }; loading = false }
-    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(Unit) { loading = true; repo.wallet().onSuccess { wallet = it }.onFailure { message = it.message ?: "تعذر تحميل المحفظة" }; loading = false }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = AInk) }; Spacer(Modifier.weight(1f)); Text("طرق الدفع والمحفظة", color = AInk, fontSize = 22.sp, fontWeight = FontWeight.Black) }
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(APrimary), shape = RoundedCornerShape(23.dp), elevation = CardDefaults.cardElevation(7.dp)) { Row(Modifier.padding(17.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Wallet, null, tint = Color.White, modifier = Modifier.size(31.dp)); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("رصيد المحفظة", color = Color.White.copy(alpha = .72f), fontSize = 10.sp); Text("${syp(wallet?.balance ?: 0L)} ل.س", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black) }; IconButton(onClick = { refresh() }) { Icon(Icons.Default.Refresh, "تحديث", tint = Color.White) } } }
-        Button(onClick = { showTopUp = true; amount = ""; message = null }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = APrimary)) { Text("شحن الرصيد", fontWeight = FontWeight.Black) }
-        PaymentChoice("cash", "الدفع نقداً", "ادفع للكابتن بعد الوصول", selected == "cash") { selected = "cash" }
-        PaymentChoice("wallet", "محفظة وصلها", "${syp(wallet?.balance ?: 0L)} ل.س", selected == "wallet") { if ((wallet?.balance ?: 0L) > 0) selected = "wallet" else message = "رصيد المحفظة غير كافٍ" }
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(APrimary), shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(7.dp)) { Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("رصيد المحفظة", color = Color.White.copy(alpha = .78f), fontSize = 12.sp); Text("${syp(wallet?.balance ?: 0L)} ل.س", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black); Text(wallet?.currency ?: "SYP", color = AAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold) } }
+        Button(onClick = { showTopUp = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = APrimary)) { Icon(Icons.Default.Wallet, null); Spacer(Modifier.width(7.dp)); Text("شحن الرصيد", fontWeight = FontWeight.Black) }
+        Text("طريقة الدفع", color = AInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+        PaymentChoice("الدفع نقداً", "ادفع للكابتن عند نهاية الرحلة", selected == "cash") { selected = "cash" }
+        PaymentChoice("من المحفظة", "يُخصم المبلغ من رصيدك المتاح", selected == "wallet") { selected = "wallet" }
         if (loading) CircularProgressIndicator(color = APrimary)
         message?.let { Text(it, color = if (it.startsWith("تم")) APrimary else ADanger, fontSize = 11.sp) }
     }
-    if (showTopUp) AlertDialog(
-        onDismissRequest = { if (!topUpLoading) showTopUp = false },
-        title = { Text("شحن المحفظة", fontWeight = FontWeight.Black) },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("أدخل المبلغ المطلوب شحنه بالليرة السورية.", color = AMuted); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("المبلغ") }, singleLine = true) } },
-        confirmButton = { TextButton(enabled = !topUpLoading, onClick = {
-            val value = amount.toLongOrNull()
-            if (value == null || value <= 0L) { message = "أدخل مبلغاً صالحاً"; return@TextButton }
-            topUpLoading = true
-            scope.launch {
-                runCatching { ApiProvider.api.createSupportTicket(SupportTicketRequest("طلب شحن المحفظة", "المبلغ المطلوب: ${syp(value)} ل.س", category = "wallet_topup")) }
-                    .onSuccess { showTopUp = false; message = "تم إرسال طلب الشحن لفريق الدعم" }
-                    .onFailure { message = it.message ?: "تعذر إرسال طلب الشحن" }
-                topUpLoading = false
-            }
-        }) { if (topUpLoading) CircularProgressIndicator(Modifier.size(18.dp), color = APrimary, strokeWidth = 2.dp) else Text("إرسال طلب الشحن", color = APrimary, fontWeight = FontWeight.Black) } },
-        dismissButton = { TextButton(enabled = !topUpLoading, onClick = { showTopUp = false }) { Text("إلغاء") } }
-    )
+    if (showTopUp) AlertDialog(onDismissRequest = { if (!topUpLoading) showTopUp = false }, title = { Text("شحن المحفظة", fontWeight = FontWeight.Black) }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("أرسل طلب شحن ليتم ربطه بحسابك ومراجعته من الدعم.", color = AMuted, fontSize = 11.sp); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("المبلغ بالليرة السورية") }, singleLine = true) } }, confirmButton = { TextButton(enabled = !topUpLoading, onClick = { val value = amount.toLongOrNull(); if (value == null || value <= 0) { message = "أدخل مبلغاً صحيحاً"; return@TextButton }; topUpLoading = true; scope.launch { runCatching { ApiProvider.api.createSupportTicket(SupportTicketRequest("طلب شحن المحفظة", "أرغب بشحن المحفظة بمبلغ ${syp(value)} ل.س", "wallet_topup")) }.onSuccess { response -> if (response.success) { showTopUp = false; amount = ""; message = "تم إرسال طلب الشحن للدعم" } else message = response.message ?: "تعذر إرسال الطلب" }.onFailure { message = it.message ?: "تعذر إرسال الطلب" }; topUpLoading = false } }) { Text("إرسال الطلب", color = APrimary, fontWeight = FontWeight.Black) } }, dismissButton = { TextButton(enabled = !topUpLoading, onClick = { showTopUp = false }) { Text("إلغاء") } })
 }
 
 @Composable
-private fun PaymentChoice(id: String, title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (selected) ASoft else Color.White), border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) APrimary else ALine), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(2.dp)) { Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected, onClick = onClick); Spacer(Modifier.width(7.dp)); Column(Modifier.weight(1f)) { Text(title, color = AInk, fontWeight = FontWeight.Black, fontSize = 13.sp); Text(subtitle, color = AMuted, fontSize = 10.sp) } } }
-}
+private fun PaymentChoice(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) { Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(Color.White), border = BorderStroke(1.dp, if (selected) APrimary else ALine), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(2.dp)) { Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected, onClick); Spacer(Modifier.width(8.dp)); Column(Modifier.weight(1f)) { Text(title, color = AInk, fontWeight = FontWeight.Black, fontSize = 13.sp); Text(subtitle, color = AMuted, fontSize = 10.sp) } } } }
 
 @Composable
-fun CustomerSavedPlacesV2(pickup: Coordinates, onBack: () -> Unit) {
+fun CustomerSavedPlacesV2(currentPickup: Coordinates, onBack: () -> Unit) {
     val scope = rememberCoroutineScope(); val repo = remember { CustomerRepository() }
-    var places by remember { mutableStateOf<List<SavedPlaceDto>>(emptyList()) }; var loading by remember { mutableStateOf(true) }; var slot by remember { mutableStateOf<String?>(null) }; var picked by remember { mutableStateOf<Coordinates?>(null) }; var message by remember { mutableStateOf<String?>(null) }
-    fun reload() = scope.launch { loading = true; repo.savedPlaces().onSuccess { places = it }.onFailure { message = it.message ?: "تعذر تحميل الأماكن" }; loading = false }
-    LaunchedEffect(Unit) { reload() }
-    if (slot != null) {
-        Box(Modifier.fillMaxSize()) {
-            WaslhaRideMap(pickup = pickup, destination = picked, modifier = Modifier.fillMaxSize(), onDestinationPicked = { picked = it })
-            Card(Modifier.align(Alignment.TopCenter).padding(14.dp).fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(6.dp)) { Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = { slot = null }) { Icon(Icons.Default.ArrowBack, "رجوع", tint = AInk) }; Column(Modifier.weight(1f)) { Text(if (slot == "home") "تحديد المنزل" else "تحديد العمل", color = AInk, fontWeight = FontWeight.Black); Text("حدد الموقع من الخريطة ثم احفظه", color = AMuted, fontSize = 10.sp) } } }
-            if (picked != null) Button(onClick = { val target = picked ?: return@Button; val type = slot ?: return@Button; scope.launch { repo.savePlace(type, SavedPlaceRequest(if (type == "home") "المنزل" else "العمل", target.lat, target.lng)).onSuccess { places = places.filterNot { it.type == type } + it; slot = null; picked = null; message = "تم حفظ ${if (type == "home") "المنزل" else "العمل"}" }.onFailure { message = it.message ?: "تعذر حفظ المكان" } } }, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp).navigationBarsPadding(), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = APrimary)) { Text("حفظ هذا الموقع", fontWeight = FontWeight.Black) }
+    var places by remember { mutableStateOf<List<SavedPlaceDto>>(emptyList()) }; var selectedSlot by remember { mutableStateOf<String?>(null) }; var loading by remember { mutableStateOf(true) }; var message by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { loading = true; repo.savedPlaces().onSuccess { places = it }.onFailure { message = it.message ?: "تعذر تحميل الأماكن" }; loading = false }
+    fun placeFor(slot: String) = places.firstOrNull { it.type == slot }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = AInk) }; Spacer(Modifier.weight(1f)); Text("الأماكن المحفوظة", color = AInk, fontSize = 22.sp, fontWeight = FontWeight.Black) }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SavedPlaceCard("home", "المنزل", placeFor("home")) { selectedSlot = "home" }
+            SavedPlaceCard("work", "العمل", placeFor("work")) { selectedSlot = "work" }
+            if (loading) CircularProgressIndicator(color = APrimary)
+            message?.let { Text(it, color = ADanger, fontSize = 11.sp) }
         }
-        return
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = AInk) }; Spacer(Modifier.weight(1f)); Text("الأماكن المحفوظة", color = AInk, fontSize = 22.sp, fontWeight = FontWeight.Black) }
-        PlaceSlotCard("المنزل", places.firstOrNull { it.type == "home" }) { slot = "home" }
-        PlaceSlotCard("العمل", places.firstOrNull { it.type == "work" }) { slot = "work" }
-        if (loading) CircularProgressIndicator(color = APrimary)
-        message?.let { Text(it, color = if (it.startsWith("تم")) APrimary else ADanger, fontSize = 11.sp) }
+    selectedSlot?.let { slot ->
+        Box(Modifier.fillMaxSize().navigationBarsPadding()) {
+            WaslhaRideMap(initialCenter = currentPickup, initialDestination = placeFor(slot)?.let { Coordinates(it.latitude, it.longitude) }, onDestinationSelected = { coordinates ->
+                scope.launch { repo.savePlace(slot, SavedPlaceRequest(if (slot == "home") "المنزل" else "العمل", coordinates.lat, coordinates.lng)).onSuccess { saved -> places = places.filterNot { it.type == slot } + saved; selectedSlot = null; message = "تم حفظ الموقع" }.onFailure { message = it.message ?: "تعذر حفظ الموقع" } }
+            }, onClose = { selectedSlot = null })
+        }
     }
 }
 
 @Composable
-private fun PlaceSlotCard(title: String, place: SavedPlaceDto?, onClick: () -> Unit) {
+private fun SavedPlaceCard(slot: String, title: String, place: SavedPlaceDto?, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(Color.White), border = BorderStroke(1.dp, ALine), shape = RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(3.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(45.dp).clip(CircleShape).background(ASoft), contentAlignment = Alignment.Center) { Icon(if (title == "المنزل") Icons.Default.Home else Icons.Default.LocationOn, null, tint = APrimary, modifier = Modifier.size(23.dp)) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(title, color = AInk, fontWeight = FontWeight.Black); Text(if (place == null) "إضافة موقع من الخريطة" else "${"%.5f".format(place.latitude)} • ${"%.5f".format(place.longitude)}", color = if (place == null) AMuted else APrimary, fontSize = 10.sp) }; Icon(Icons.Default.ChevronLeft, null, tint = AMuted) } }
 }
 
@@ -309,7 +293,7 @@ fun CustomerSupportV2(onBack: () -> Unit) {
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(ASoft), shape = RoundedCornerShape(21.dp), elevation = CardDefaults.cardElevation(3.dp)) { Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.SupportAgent, null, tint = APrimary, modifier = Modifier.size(31.dp)); Spacer(Modifier.width(10.dp)); Column { Text("تواصل مع فريق وصلها", color = AInk, fontWeight = FontWeight.Black); Text("كل رسالة تصبح محادثة دعم مرتبطة بحسابك.", color = AMuted, fontSize = 10.sp) } } }
         OutlinedTextField(subject, { subject = it }, Modifier.fillMaxWidth(), label = { Text("عنوان المشكلة") }, singleLine = true, shape = RoundedCornerShape(16.dp))
         OutlinedTextField(body, { body = it }, Modifier.fillMaxWidth(), label = { Text("رسالتك") }, minLines = 5, shape = RoundedCornerShape(16.dp))
-        Button(onClick = { if (subject.isBlank() || body.isBlank()) { message = "اكتب عنوان المشكلة ورسالتك أولاً"; return@Button }; sending = true; message = null; scope.launch { runCatching { ApiProvider.api.createSupportTicket(SupportTicketRequest(subject.trim(), body.trim())) }.onSuccess { subject = ""; body = ""; message = "تم فتح محادثة الدعم بنجاح"; tickets = listOf(it) + tickets }.onFailure { message = it.message ?: "تعذر إرسال الرسالة" }; sending = false } }, enabled = !sending, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = APrimary)) { if (sending) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("بدء محادثة مع الدعم", fontWeight = FontWeight.Black) }
+        Button(onClick = { if (subject.isBlank() || body.isBlank()) { message = "اكتب عنوان المشكلة ورسالتك أولاً"; return@Button }; sending = true; message = null; scope.launch { runCatching { ApiProvider.api.createSupportTicket(SupportTicketRequest(subject.trim(), body.trim())) }.onSuccess { response -> if (response.success) { response.data?.let { ticket -> tickets = listOf(ticket) + tickets }; subject = ""; body = ""; message = "تم فتح محادثة الدعم بنجاح" } else { message = response.message ?: "تعذر إرسال الرسالة" } }.onFailure { message = it.message ?: "تعذر إرسال الرسالة" }; sending = false } }, enabled = !sending, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = APrimary)) { if (sending) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("بدء محادثة مع الدعم", fontWeight = FontWeight.Black) }
         if (ticketsLoading) CircularProgressIndicator(color = APrimary)
         tickets.take(5).forEach { ticket ->
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color.White), border = BorderStroke(1.dp, ALine), shape = RoundedCornerShape(17.dp), elevation = CardDefaults.cardElevation(2.dp)) { Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(ticket.subject, color = AInk, fontWeight = FontWeight.Black, fontSize = 13.sp); Text(if (ticket.status == "open") "مفتوحة" else ticket.status, color = APrimary, fontSize = 9.sp, fontWeight = FontWeight.Bold) }; Text(ticket.message, color = AMuted, fontSize = 10.sp) } }
