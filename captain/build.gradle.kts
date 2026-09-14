@@ -12,8 +12,8 @@ android {
         applicationId = "com.waslha.captain"
         minSdk = 26
         targetSdk = 35
-        versionCode = 103
-        versionName = "1.0.3"
+        versionCode = 104
+        versionName = "1.0.4"
     }
 
     val keystorePath = System.getenv("WASLHA_KEYSTORE_PATH")
@@ -39,9 +39,7 @@ android {
 
     buildTypes {
         release {
-            if (signingReady) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            if (signingReady) signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -51,7 +49,6 @@ android {
     }
 
     kotlinOptions { jvmTarget = "17" }
-
     buildFeatures { compose = true }
 
     sourceSets["main"].java.exclude(
@@ -79,5 +76,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("com.mapbox.maps:android-ndk27:11.30.0")
+    implementation("com.mapbox.extension:maps-compose-ndk27:11.30.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
