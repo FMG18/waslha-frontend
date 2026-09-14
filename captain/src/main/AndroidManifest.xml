@@ -12,7 +12,8 @@
         <activity android:name=".CaptainAccountCenterActivity" android:exported="false" />
         <activity android:name=".CaptainEarningsActivity" android:exported="false" />
         <activity android:name=".CaptainTripActivity" android:exported="false" />
-        <activity android:name=".CaptainActivityV2" android:exported="true">
+        <activity android:name=".CaptainActivityV2" android:exported="false" />
+        <activity android:name=".CaptainLiveActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
