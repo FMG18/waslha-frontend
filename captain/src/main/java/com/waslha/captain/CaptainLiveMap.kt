@@ -60,7 +60,7 @@ html,body,#map{height:100%;margin:0;background:#e8efeb;font-family:Arial,sans-se
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([33.5138,36.2765],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-const icon=(cls,text)=>L.divIcon({className:'',html:`<div class="pin ${'${'}cls}">${'${'}text}</div>`,iconSize:[36,36],iconAnchor:[18,18]});
+const icon=(cls,text)=>L.divIcon({className:'',html:`<div class="pin ${'$'}{cls}">${'$'}{text}</div>`,iconSize:[36,36],iconAnchor:[18,18]});
 let driverMarker=null,pickupMarker=null,destMarker=null;
 function updateDriver(lat,lng){if(!driverMarker){driverMarker=L.marker([lat,lng],{icon:icon('driver','و')}).addTo(map)}else driverMarker.setLatLng([lat,lng]);}
 function setPickup(lat,lng){if(!pickupMarker) pickupMarker=L.marker([lat,lng],{icon:icon('pickup','↑')}).addTo(map);else pickupMarker.setLatLng([lat,lng]);}
