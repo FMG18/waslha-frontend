@@ -193,29 +193,18 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
         when (page) {
             CustomerPage.Home -> CustomerScaffold(page, { page = it }) {
                 CustomerHomeMap(
-                    pickup ?: Coordinates(33.5138, 36.2765),
-                    pickupLabel,
-                    destination,
-                    vehicle,
-                    estimate,
-                    estimateLoading,
-                    locationLoading,
-                    requesting,
-                    error,
+                    pickup ?: Coordinates(33.5138, 36.2765), pickupLabel, destination, vehicle, estimate, estimateLoading, locationLoading, requesting, error,
                     { if (permissionGranted) refreshLocation() else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
                     { coords -> destination = V2Destination("الموقع المحدد", "من الخريطة", coords) },
                     { vehicle = it }
                 ) { paymentMethod ->
-                    val from = pickup
-                    val to = destination
-                    val userId = sessionStore.userId
+                    val from = pickup; val to = destination; val userId = sessionStore.userId
                     when {
                         from == null -> error = "حدد موقع الانطلاق أولاً"
                         to == null -> error = "حدد وجهتك أولاً"
                         userId.isNullOrBlank() -> error = "بيانات الحساب غير مكتملة"
                         else -> {
-                            requesting = true
-                            error = null
+                            requesting = true; error = null
                             scope.launch {
                                 repo.create(TripRequest(userId, from, to.coordinates, vehicle.id, paymentMethod))
                                     .onSuccess { trip = it }
@@ -227,14 +216,14 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
                 }
             }
             CustomerPage.Trips -> CustomerScaffold(page, { page = it }) { CustomerTrips(trips, tripsLoading, error) { page = CustomerPage.Trips } }
-            CustomerPage.Profile -> CustomerScaffold(page, { page = it }) { CustomerProfile(sessionStore, { page = it }, onLogout) }
-            CustomerPage.Settings -> CustomerSubPage("الإعدادات", { page = CustomerPage.Profile }) { SimpleSettings { page = CustomerPage.Notifications } }
+            CustomerPage.Profile -> CustomerScaffold(page, { page = it }) { CustomerProfileV2(sessionStore, { page = it }, onLogout) }
+            CustomerPage.Settings -> CustomerSettingsV2(sessionStore, { page = CustomerPage.Profile }, { page = CustomerPage.Notifications }) { page = CustomerPage.Profile }
             CustomerPage.Notifications -> CustomerSubPage("الإشعارات", { page = CustomerPage.Profile }) { NotificationPage() }
-            CustomerPage.Payments -> CustomerSubPage("طرق الدفع", { page = CustomerPage.Profile }) { PaymentPage() }
-            CustomerPage.SavedPlaces -> CustomerSubPage("الأماكن المحفوظة", { page = CustomerPage.Profile }) { SavedPlacePage() }
-            CustomerPage.Support -> CustomerSubPage("المساعدة والدعم", { page = CustomerPage.Profile }) { SupportPage() }
+            CustomerPage.Payments -> CustomerPaymentsV2 { page = CustomerPage.Profile }
+            CustomerPage.SavedPlaces -> CustomerSavedPlacesV2(pickup ?: Coordinates(33.5138, 36.2765), { page = CustomerPage.Profile })
+            CustomerPage.Support -> CustomerSupportV2 { page = CustomerPage.Profile }
             CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }
-            CustomerPage.EditProfile -> CustomerSubPage("تعديل الحساب", { page = CustomerPage.Profile }) { EditProfilePage(sessionStore) { page = CustomerPage.Profile } }
+            CustomerPage.EditProfile -> CustomerEditProfileV2(sessionStore, { page = CustomerPage.Profile }) { page = CustomerPage.Profile }
             CustomerPage.Map -> MapDestinationPage(pickup ?: Coordinates(33.5138, 36.2765), destination?.coordinates, { page = CustomerPage.Home }) { coords -> destination = V2Destination("الموقع المحدد", "من الخريطة", coords); page = CustomerPage.Home }
         }
         if (trip != null && page != CustomerPage.Map) {
@@ -247,153 +236,44 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
 }
 
 @Composable
-private fun CustomerScaffold(
-    page: CustomerPage,
-    onPage: (CustomerPage) -> Unit,
-    content: @Composable () -> Unit
-) {
-    val selected = when (page) {
-        CustomerPage.Home, CustomerPage.Map -> 0
-        CustomerPage.Trips -> 1
-        else -> 2
-    }
-
+private fun CustomerScaffold(page: CustomerPage, onPage: (CustomerPage) -> Unit, content: @Composable () -> Unit) {
+    val selected = when (page) { CustomerPage.Home, CustomerPage.Map -> 0; CustomerPage.Trips -> 1; else -> 2 }
     Scaffold(
         containerColor = CBackground,
         bottomBar = {
-            NavigationBar(
-                containerColor = CWhite,
-                tonalElevation = 0.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-                    .navigationBarsPadding()
-                    .clip(RoundedCornerShape(22.dp)),
-                windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
-            ) {
-                NavigationBarItem(
-                    selected = selected == 0,
-                    onClick = { onPage(CustomerPage.Home) },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "الرئيسية") },
-                    label = { Text("الرئيسية", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = CPurple,
-                        selectedTextColor = CPurple,
-                        indicatorColor = Color(0xFFF0EBF8),
-                        unselectedIconColor = CMuted,
-                        unselectedTextColor = CMuted
-                    )
-                )
-                NavigationBarItem(
-                    selected = selected == 1,
-                    onClick = { onPage(CustomerPage.Trips) },
-                    icon = { Icon(Icons.Default.History, contentDescription = "رحلاتي") },
-                    label = { Text("رحلاتي", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = CPurple,
-                        selectedTextColor = CPurple,
-                        indicatorColor = Color(0xFFF0EBF8),
-                        unselectedIconColor = CMuted,
-                        unselectedTextColor = CMuted
-                    )
-                )
-                NavigationBarItem(
-                    selected = selected == 2,
-                    onClick = { onPage(CustomerPage.Profile) },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "حسابي") },
-                    label = { Text("حسابي", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = CPurple,
-                        selectedTextColor = CPurple,
-                        indicatorColor = Color(0xFFF0EBF8),
-                        unselectedIconColor = CMuted,
-                        unselectedTextColor = CMuted
-                    )
-                )
+            NavigationBar(containerColor = CWhite, tonalElevation = 0.dp, modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp).navigationBarsPadding().clip(RoundedCornerShape(22.dp)), windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)) {
+                NavigationBarItem(selected = selected == 0, onClick = { onPage(CustomerPage.Home) }, icon = { Icon(Icons.Default.Home, contentDescription = "الرئيسية") }, label = { Text("الرئيسية", fontSize = 10.sp, fontWeight = FontWeight.Bold) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = CPurple, selectedTextColor = CPurple, indicatorColor = Color(0xFFF0EBF8), unselectedIconColor = CMuted, unselectedTextColor = CMuted))
+                NavigationBarItem(selected = selected == 1, onClick = { onPage(CustomerPage.Trips) }, icon = { Icon(Icons.Default.History, contentDescription = "رحلاتي") }, label = { Text("رحلاتي", fontSize = 10.sp, fontWeight = FontWeight.Bold) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = CPurple, selectedTextColor = CPurple, indicatorColor = Color(0xFFF0EBF8), unselectedIconColor = CMuted, unselectedTextColor = CMuted))
+                NavigationBarItem(selected = selected == 2, onClick = { onPage(CustomerPage.Profile) }, icon = { Icon(Icons.Default.Person, contentDescription = "حسابي") }, label = { Text("حسابي", fontSize = 10.sp, fontWeight = FontWeight.Bold) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = CPurple, selectedTextColor = CPurple, indicatorColor = Color(0xFFF0EBF8), unselectedIconColor = CMuted, unselectedTextColor = CMuted))
             }
         }
-    ) { padding ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            content()
-        }
-    }
+    ) { padding -> Box(Modifier.fillMaxSize().padding(padding)) { content() } }
 }
 
 @Composable
 private fun RoutePoint(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Boolean, loading: Boolean, onClick: () -> Unit) {
-    Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
-        colors = CardDefaults.cardColors(if (accent) Color.White else Color.White.copy(alpha = .12f)),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (accent) Color.White else Color.White.copy(alpha = .12f)), shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(if (accent) CSoft else Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = if (accent) CPrimary else Color.White, modifier = Modifier.size(20.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(label, color = if (accent) CMuted else Color.White.copy(alpha = .68f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                Text(value, color = if (accent) CInk else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (accent) CPrimary else Color.White, strokeWidth = 2.dp)
-            else Icon(Icons.Default.ChevronLeft, null, tint = if (accent) CMuted else Color.White.copy(alpha = .72f), modifier = Modifier.size(20.dp))
+            Box(Modifier.size(40.dp).clip(CircleShape).background(if (accent) CSoft else Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (accent) CPrimary else Color.White, modifier = Modifier.size(20.dp)) }
+            Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(label, color = if (accent) CMuted else Color.White.copy(alpha = .68f), fontSize = 9.sp, fontWeight = FontWeight.Bold); Text(value, color = if (accent) CInk else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+            if (loading) CircularProgressIndicator(Modifier.size(19.dp), color = if (accent) CPrimary else Color.White, strokeWidth = 2.dp) else Icon(Icons.Default.ChevronLeft, null, tint = if (accent) CMuted else Color.White.copy(alpha = .72f), modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun RouteConnector() {
-    Row(Modifier.padding(start = 18.dp, top = 1.dp, bottom = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(2.dp).height(12.dp).background(CAccent))
-        Spacer(Modifier.width(8.dp))
-        Text("مسار الرحلة", color = Color.White.copy(alpha = .55f), fontSize = 8.sp)
-    }
-}
+private fun RouteConnector() { Row(Modifier.padding(start = 18.dp, top = 1.dp, bottom = 1.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.width(2.dp).height(12.dp).background(CAccent)); Spacer(Modifier.width(8.dp)); Text("مسار الرحلة", color = Color.White.copy(alpha = .55f), fontSize = 8.sp) } }
 
 @Composable
-private fun SectionTitle(title: String, subtitle: String) {
-    Column {
-        Text(title, color = CInk, fontSize = 17.sp, fontWeight = FontWeight.Black)
-        Text(subtitle, color = CMuted, fontSize = 11.sp)
-    }
-}
+private fun SectionTitle(title: String, subtitle: String) { Column { Text(title, color = CInk, fontSize = 17.sp, fontWeight = FontWeight.Black); Text(subtitle, color = CMuted, fontSize = 11.sp) } }
 
 @Composable
 private fun VehicleRow(vehicle: V2Vehicle, selected: Boolean, onClick: () -> Unit) {
-    Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
-        colors = CardDefaults.cardColors(if (selected) CSoft else CWhite),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(if (selected) CSoft else CWhite), shape = RoundedCornerShape(20.dp), border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) CPrimary else CLine), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) CPrimary else CSoft2), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color.White else CPrimary, modifier = Modifier.size(25.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                    if (vehicle.id == "economy") {
-                        Spacer(Modifier.width(7.dp))
-                        Text("شائع", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 8.sp)
-                    }
-                }
-                Text(vehicle.subtitle, color = CMuted, fontSize = 10.sp)
-            }
-            if (selected) {
-                Box(Modifier.size(25.dp).clip(CircleShape).background(CPrimary), contentAlignment = Alignment.Center) {
-                    Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
-                }
-            } else {
-                Icon(Icons.Default.ChevronLeft, null, tint = CMuted, modifier = Modifier.size(20.dp))
-            }
+            Box(Modifier.size(48.dp).clip(CircleShape).background(if (selected) CPrimary else CSoft2), contentAlignment = Alignment.Center) { Icon(Icons.Default.DirectionsCar, null, tint = if (selected) Color.White else CPrimary, modifier = Modifier.size(25.dp)) }
+            Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Row(verticalAlignment = Alignment.CenterVertically) { Text(vehicle.title, color = CInk, fontWeight = FontWeight.Black, fontSize = 14.sp); if (vehicle.id == "economy") { Spacer(Modifier.width(7.dp)); Text("شائع", color = CPrimary, fontWeight = FontWeight.Bold, fontSize = 8.sp) } }; Text(vehicle.subtitle, color = CMuted, fontSize = 10.sp) }
+            if (selected) Box(Modifier.size(25.dp).clip(CircleShape).background(CPrimary), contentAlignment = Alignment.Center) { Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp) } else Icon(Icons.Default.ChevronLeft, null, tint = CMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
