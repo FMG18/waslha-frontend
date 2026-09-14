@@ -63,7 +63,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -188,7 +188,7 @@ private fun MapPickerScreen(pickup: Coordinates?, destination: Coordinates?, onD
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "رجوع", tint = TaxiInk) }; Column(Modifier.weight(1f)) { Text("حدد وجهتك", fontSize = 19.sp, fontWeight = FontWeight.Black, color = TaxiInk); Text(if (destination == null) "اضغط على الخريطة لاختيار الوجهة" else "تم تحديد الوجهة بنجاح", fontSize = 10.sp, color = if (destination == null) TaxiMuted else TaxiGreen, fontWeight = FontWeight.Bold) }; if (destination != null) Box(Modifier.size(10.dp).clip(CircleShape).background(TaxiGreen)) }
         Box(Modifier.weight(1f)) { if (pickup != null) WaslhaRideMap(pickup = pickup, destination = destination, modifier = Modifier.fillMaxSize(), onDestinationPicked = onDestination) else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("جارٍ تحديد موقع الانطلاق...", color = TaxiMuted) } }
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp), colors = CardDefaults.cardColors(Color.White), elevation = CardDefaults.cardElevation(8.dp)) { Column(Modifier.padding(horizontal = 17.dp, vertical = 15.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(8.dp)) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(if (destination == null) "اختر نقطة على الخريطة" else "الوجهة محددة", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TaxiInk); Text(if (destination == null) "ستظهر الوجهة هنا بعد اختيارها" else "جاهز للعودة وتأكيد الرحلة", fontSize = 10.sp, color = TaxiMuted) }; if (destination != null) Text("✓", fontSize = 22.sp, fontWeight = FontWeight.Black, color = TaxiGreen) }; Button(enabled = destination != null, onClick = onConfirm, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) { Text("تأكيد الوجهة", fontWeight = FontWeight.Black) } } }
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp), colors = CardDefaults.cardColors(Color.White), elevation = CardDefaults.cardElevation(8.dp)) { Column(Modifier.padding(horizontal = 17.dp, vertical = 15.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(8.dp)) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(if (destination == null) "اختر نقطة على الخريطة" else "الوجهة محددة", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TaxiInk); Text(if (destination == null) "ستظهر الوجهة هنا بعد اختيارها" else "جاهز للعودة وتأكيد الرحلة", fontSize = 10.sp, color = TaxiMuted) }; if (destination != null) Text("✓", fontSize = 22.sp, fontWeight = FontWeight.Black, color = TaxiGreen) }; Button(enabled = destination != null, onClick = onConfirm, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) { Text("تأكيد الوجهة واختيار السيارة", fontWeight = FontWeight.Black) } } }
     }
 }
 
