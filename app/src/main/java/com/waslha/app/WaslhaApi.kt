@@ -61,5 +61,5 @@ data class SavedPlaceDto(val id: String, val type: String, val name: String, val
 data class SavedPlaceRequest(val name: String, val latitude: Double, val longitude: Double)
 data class PlaceDeleteDto(val deleted: Boolean)
 data class NearbyDriverDto(val id: String, val type: String, val lat: Double, val lng: Double, val available: Boolean = true, val updatedAt: Long = 0L)
-data class SupportTicketRequest(val subject: String, val message: String, val category: String = "general", val tripId: String? = null)
+data class SupportTicketRequest(val subject: String, val message: String, val category: String = "general", val tripId: String? = null, val userId: String? = null)
 data class SupportTicketDto(val id: String, val userId: String, val category: String, val subject: String, val message: String, val tripId: String? = null, val status: String, val createdAt: Long = 0L)
