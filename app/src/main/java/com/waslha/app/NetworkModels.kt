@@ -17,3 +17,6 @@ data class FareEstimate(val distanceKm: Double, val durationMin: Int, val curren
 data class Driver(val id: String, val name: String, val rating: Double, val vehicle: String, val plate: String, val type: String, val lat: Double, val lng: Double, val available: Boolean, val phone: String? = null)
 data class Trip(val id: String, val customerId: String, val pickup: Coordinates, val destination: Coordinates, val vehicleType: String, val paymentMethod: String, val distanceKm: Double, val durationMin: Int, val currency: String, val estimatedFare: Int, val status: String, val driver: Driver? = null, val createdAt: Long, val updatedAt: Long, @SerializedName("cancelReason") val cancelReason: String? = null)
 data class RatingRequest(val tripId: String, val customerId: String, val driverId: String, val score: Int, val comment: String = "")
+data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
+data class MarkNotificationReadRequest(val userId: String)
+data class NotificationReadDto(val read: Boolean)
