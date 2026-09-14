@@ -58,7 +58,7 @@ private fun CaptainEntry() {
     var signedIn by remember { mutableStateOf(session.isSignedIn) }
     Surface(Modifier.fillMaxSize(), color = LB) {
         if (signedIn) {
-            CaptainHomeV3(session) { session.clear(); signedIn = false }
+            CaptainHomeProduction(session) { session.clear(); signedIn = false }
         } else {
             CaptainLoginV3 { response -> session.save(response); signedIn = true }
         }
