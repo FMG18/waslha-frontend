@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -254,7 +255,8 @@ private fun CaptainMapHome(
     }
 }
 
-@Composable private fun ActivePanel(trip: Trip, busy: Boolean, onStatus: (String, String) -> Unit, onCall: (String) -> Unit, onChat: (Trip) -> Unit, onNavigate: (Coordinates) -> Unit) {
+@Composable
+private fun BoxScope.ActivePanel(trip: Trip, busy: Boolean, onStatus: (String, String) -> Unit, onCall: (String) -> Unit, onChat: (Trip) -> Unit, onNavigate: (Coordinates) -> Unit) {
     val next = when (trip.status) { "driver_assigned" -> "arriving"; "arriving" -> "in_progress"; "in_progress" -> "completed"; else -> "" }
     val label = when (trip.status) { "driver_assigned" -> "أنا في الطريق"; "arriving" -> "وصلت للزبون"; "in_progress" -> "إنهاء الرحلة"; else -> "مكتملة" }
     Surface(Modifier.padding(14.dp).fillMaxWidth().align(Alignment.BottomCenter), color = White.copy(.97f), shape = RoundedCornerShape(25.dp), shadowElevation = 10.dp) {
@@ -277,46 +279,73 @@ private fun CaptainMapHome(
     Column(Modifier.fillMaxWidth().padding(18.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("رحلة جديدة", color = Ink, fontSize = 21.sp, fontWeight = FontWeight.Black); Text("طلب مباشر", color = Muted, fontSize = 10.sp) }
-            Surface(color = if (seconds <= 5) Color(0xFFFFE9E7) else Mint, shape = CircleShape) { Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) { Text(seconds.toString(), color = if (seconds <= 5) Red else Green, fontSize = 24.sp, fontWeight = FontWeight.Black) } }
+            Surface(color = if (seconds <= 5) Color(0xFFFFE9E7) else Mint, shape = CircleShape) { Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) { Text(seconds.toString(), color = if (seconds <= 5) Red else Green, fontSize = 20.sp, fontWeight = FontWeight.Black) } }
         }
-        Text("الأجرة التقديرية: ${trip.estimatedFare} ل.س", color = Green, fontSize = 17.sp, fontWeight = FontWeight.Black)
-        Text("المسافة: ${trip.distanceKm} كم • الوصول: ${trip.durationMin} دقيقة", color = Muted, fontSize = 10.sp)
-        Surface(color = Color(0xFFF1F4F2), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Text("الانطلاق: ${trip.pickup.lat.format4()} ، ${trip.pickup.lng.format4()}", color = Ink, fontSize = 10.sp); Text("الوجهة: ${trip.destination.lat.format4()} ، ${trip.destination.lng.format4()}", color = Ink, fontSize = 10.sp) } }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) { OutlinedButton(onClick = onReject, enabled = !busy, modifier = Modifier.weight(1f)) { Text("رفض", color = Red) }; Button(onClick = onAccept, enabled = !busy, modifier = Modifier.weight(1.5f), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("قبول الطلب", color = White, fontWeight = FontWeight.Black) } }
+        Text("من ${trip.pickupLabel ?: "الموقع الحالي"} إلى ${trip.destinationLabel ?: "الوجهة"}", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("${trip.distanceKm} كم • ${trip.durationMin} دقيقة • ${trip.estimatedFare} ل.س", color = Muted, fontSize = 10.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = onReject, enabled = !busy, modifier = Modifier.weight(1f)) { Text("رفض") }
+            Button(onClick = onAccept, enabled = !busy, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("قبول", color = White, fontWeight = FontWeight.Black) }
+        }
     }
 }
 
 @Composable private fun CaptainTripsPage(trips: List<Trip>) {
-    LazyColumn(Modifier.fillMaxSize().background(Bg), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Text("رحلاتي", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("كل الرحلات المرتبطة بحسابك", color = Muted, fontSize = 10.sp) }
-        items(trips, key = { it.id }) { trip -> Surface(Modifier.fillMaxWidth(), color = White, shape = RoundedCornerShape(19.dp)) { Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("#${trip.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Black); Text(statusLabel(trip.status), color = Muted, fontSize = 9.sp) }; Text("${trip.estimatedFare} ل.س", color = Green, fontWeight = FontWeight.Black) } } }
-        if (trips.isEmpty()) item { Text("لا توجد رحلات مسجلة بعد", color = Muted, modifier = Modifier.fillMaxWidth().padding(40.dp), textAlign = TextAlign.Center) }
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        Text("رحلاتي", color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(8.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(trips) { trip ->
+                Surface(color = White, shape = RoundedCornerShape(20.dp), shadowElevation = 3.dp) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("#${trip.id.takeLast(6)}", color = Ink, fontWeight = FontWeight.Black)
+                        Text(statusLabel(trip.status), color = Green, fontSize = 10.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text("${trip.pickupLabel ?: "الموقع"} → ${trip.destinationLabel ?: "الوجهة"}", color = Ink, fontSize = 11.sp)
+                        Text("${trip.distanceKm} كم • ${trip.estimatedFare} ل.س", color = Muted, fontSize = 9.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable private fun CaptainAccountPage(driver: Driver?, onLogout: () -> Unit, onDocuments: () -> Unit) {
-    LazyColumn(Modifier.fillMaxSize().background(Bg), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("حساب الكابتن", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black); Text("بياناتك، مركبتك ومستنداتك", color = Muted, fontSize = 10.sp) }
-        item { Surface(Modifier.fillMaxWidth(), color = White, shape = RoundedCornerShape(23.dp)) { Column(Modifier.padding(18.dp)) { Text(driver?.name?.ifBlank { "الكابتن" } ?: "الكابتن", color = Ink, fontSize = 19.sp, fontWeight = FontWeight.Black); Text(driver?.phone ?: "+963", color = Muted, fontSize = 10.sp); Text("${driver?.vehicle.orEmpty()} • ${driver?.plate.orEmpty()}", color = Muted, fontSize = 9.sp) } } }
-        item { Surface(Modifier.fillMaxWidth().clickable(onClick = onDocuments), color = White, shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(17.dp)) { Text("الملف والمركبة", color = Ink, fontWeight = FontWeight.Black); Text("الهوية • رخصة القيادة • أوراق السيارة", color = Muted, fontSize = 9.sp) } } }
-        item { Button(onClick = onLogout, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Red, contentColor = White), shape = RoundedCornerShape(16.dp)) { Text("تسجيل الخروج", fontWeight = FontWeight.Black) } }
+    Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("حساب الكابتن", color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
+        Surface(color = White, shape = RoundedCornerShape(22.dp), shadowElevation = 4.dp) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(Modifier.size(52.dp), shape = CircleShape, color = Mint) { Box(contentAlignment = Alignment.Center) { Text("👤", fontSize = 22.sp) } }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(driver?.name ?: "الكابتن", color = Ink, fontWeight = FontWeight.Black)
+                    Text(driver?.phone ?: "", color = Muted, fontSize = 10.sp)
+                }
+            }
+        }
+        Button(onClick = onDocuments, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("المستندات", color = White, fontWeight = FontWeight.Black) }
+        OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("تسجيل الخروج") }
     }
 }
 
 @Composable private fun CaptainChat(trip: Trip, onDismiss: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    var messages by remember { mutableStateOf<List<TripMessage>>(emptyList()) }
-    var draft by remember { mutableStateOf("") }
-    LaunchedEffect(trip.id) { runCatching { CaptainApiProvider.api.tripMessages(trip.id) }.onSuccess { messages = it.data.orEmpty() } }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("دردشة", fontWeight = FontWeight.Black) }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            LazyColumn(Modifier.fillMaxWidth().height(220.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { items(messages, key = { it.id }) { m -> Surface(color = if (m.senderRole == "driver") Mint else Color(0xFFF0F2F1), shape = RoundedCornerShape(12.dp)) { Text(m.text, Modifier.padding(8.dp), color = Ink, fontSize = 10.sp) } } }
-            OutlinedTextField(draft, { draft = it.take(500) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("اكتب رسالة") })
-        }
-    }, confirmButton = { TextButton(enabled = draft.isNotBlank(), onClick = { scope.launch { runCatching { CaptainApiProvider.api.sendTripMessage(trip.id, TripMessageRequest(draft.trim())) }.onSuccess { draft = "" } } }) { Text("إرسال", color = Green) } }, dismissButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } })
+    AlertDialog(onDismissRequest = onDismiss, confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }, title = { Text("دردشة الرحلة") }, text = { Text("يمكنك استخدام دردشة الرحلة المرتبطة بالطلب #${trip.id.takeLast(6)} من شاشة الرحلة.") })
 }
 
-private fun dial(context: Context, phone: String) { if (phone.isBlank()) return; context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${phone.replace(" ", "")}"))) }
-private fun openNavigation(context: Context, point: Coordinates) { val uri = Uri.parse("google.navigation:q=${point.lat},${point.lng}"); runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${point.lat},${point.lng}"))) } }
-private fun statusLabel(status: String) = when (status) { "driver_assigned" -> "تم القبول"; "arriving" -> "في الطريق"; "in_progress" -> "الرحلة جارية"; "completed" -> "مكتملة"; else -> status }
-private fun Double.format4(): String = String.format("%.4f", this)
+private fun statusLabel(status: String): String = when (status) {
+    "driver_assigned" -> "تم التعيين"
+    "arriving" -> "في الطريق"
+    "in_progress" -> "داخل الرحلة"
+    "completed" -> "مكتملة"
+    "cancelled" -> "ملغاة"
+    else -> status.replace('_', ' ')
+}
+
+private fun dial(context: Context, phone: String) {
+    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(phone)}")))
+}
+
+private fun openNavigation(context: Context, target: Coordinates) {
+    val uri = Uri.parse("google.navigation:q=${target.lat},${target.lng}")
+    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+}
