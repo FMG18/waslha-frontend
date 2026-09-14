@@ -22,7 +22,20 @@ data class VerifyOtpRequest(val phone: String, val code: String)
 data class VerifySessionResponse(val userId: String, val phone: String = "", val role: String = "", val token: String = "")
 data class DriverDocument(val type: String, val status: String = "pending", val submittedAt: Long? = null, val reviewedAt: Long? = null, val note: String? = null)
 data class DriverDocuments(val identity: DriverDocument = DriverDocument("identity"), val license: DriverDocument = DriverDocument("license"), val vehicle: DriverDocument = DriverDocument("vehicle"))
-data class Driver(val id: String, val name: String = "", val rating: Double = 0.0, val vehicle: String = "", val plate: String = "", val type: String = "economy", val lat: Double = 0.0, val lng: Double = 0.0, val available: Boolean = false, val phone: String? = null, val documents: DriverDocuments? = null)
+data class Driver(
+    val id: String,
+    val name: String = "",
+    val rating: Double = 0.0,
+    val vehicle: String = "",
+    val plate: String = "",
+    val type: String = "economy",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val available: Boolean = false,
+    val phone: String? = null,
+    val walletBalance: Int = 0,
+    val documents: DriverDocuments? = null
+)
 data class Coordinates(val lat: Double, val lng: Double)
 data class Trip(val id: String, val customerId: String = "", val customerName: String? = null, val customerPhone: String? = null, val pickup: Coordinates, val destination: Coordinates, val vehicleType: String = "economy", val paymentMethod: String = "cash", val distanceKm: Double = 0.0, val durationMin: Int = 0, val currency: String = "ل.س", val estimatedFare: Int = 0, val status: String = "searching", val driver: Driver? = null, val createdAt: Long = 0L, val updatedAt: Long = 0L)
 data class DriverAvailabilityRequest(val available: Boolean)
