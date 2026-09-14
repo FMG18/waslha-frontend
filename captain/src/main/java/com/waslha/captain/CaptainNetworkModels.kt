@@ -28,6 +28,8 @@ data class Driver(
     val name: String = "",
     val rating: Double = 0.0,
     val vehicle: String = "",
+    val model: String = "",
+    val color: String = "",
     val plate: String = "",
     val type: String = "economy",
     val lat: Double = 0.0,
