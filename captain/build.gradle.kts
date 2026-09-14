@@ -12,8 +12,8 @@ android {
         applicationId = "com.waslha.captain"
         minSdk = 26
         targetSdk = 35
-        versionCode = 102
-        versionName = "1.0.2"
+        versionCode = 103
+        versionName = "1.0.3"
     }
 
     val keystorePath = System.getenv("WASLHA_KEYSTORE_PATH")
