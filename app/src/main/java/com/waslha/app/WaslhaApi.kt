@@ -10,60 +10,34 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface WaslhaApi {
-    @POST("/api/v1/auth/request-code")
-    suspend fun requestCode(@Body body: OtpRequest): ApiEnvelope<OtpResponse>
-    @POST("/api/v1/auth/verify-code")
-    suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
-    @POST("/api/v1/auth/google")
-    suspend fun signInWithGoogle(@Body body: GoogleAuthRequest): ApiEnvelope<GoogleSessionResponse>
-    @GET("/api/v1/update")
-    suspend fun latestUpdate(@Query("currentCode") currentCode: Int, @Query("abi") abi: String): ApiEnvelope<AppUpdateDto>
-    @GET("/api/v1/catalog/vehicle-types")
-    suspend fun vehicleTypes(): ApiEnvelope<List<VehicleTypeDto>>
-    @GET("/api/v1/trips/estimate")
-    suspend fun estimate(@Query("pickup") pickup: String): ApiEnvelope<FareEstimate>
-    @GET("/api/v1/trips")
-    suspend fun trips(@Query("customerId") customerId: String? = null): ApiEnvelope<List<Trip>>
-    @POST("/api/v1/trips")
-    suspend fun createTrip(@Body body: TripRequest): ApiEnvelope<Trip>
-    @GET("/api/v1/trips/{id}")
-    suspend fun trip(@Path("id") id: String): ApiEnvelope<Trip>
-    @GET("/api/v1/trips/{id}/tracking")
-    suspend fun tripTracking(@Path("id") id: String): ApiEnvelope<TripTrackingDto>
-    @PATCH("/api/v1/trips/{id}/status")
-    suspend fun updateTripStatus(@Path("id") id: String, @Body body: TripStatusRequest): ApiEnvelope<Trip>
-    @POST("/api/v1/trips/{id}/cancel")
-    suspend fun cancelTrip(@Path("id") id: String, @Body body: CancelTripRequest): ApiEnvelope<Trip>
-    @GET("/api/v1/trips/{id}/messages")
-    suspend fun tripMessages(@Path("id") id: String, @Query("after") after: Long = 0L): ApiEnvelope<List<TripMessageDto>>
-    @POST("/api/v1/trips/{id}/messages")
-    suspend fun sendTripMessage(@Path("id") id: String, @Body body: TripMessageRequest): ApiEnvelope<TripMessageDto>
-    @GET("/api/v1/places/search")
-    suspend fun searchPlaces(@Query("q") query: String): ApiEnvelope<List<PlaceSearchDto>>
-    @GET("/api/v1/notifications")
-    suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<NotificationDto>>
-    @PATCH("/api/v1/notifications/{id}/read")
-    suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
-    @POST("/api/v1/notifications/device-token")
-    suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): ApiEnvelope<DeviceTokenResponse>
-    @GET("/api/v1/customer/me")
-    suspend fun customerMe(): ApiEnvelope<CustomerProfileDto>
-    @PATCH("/api/v1/customer/me")
-    suspend fun updateCustomer(@Body body: CustomerProfileUpdateRequest): ApiEnvelope<CustomerProfileDto>
-    @DELETE("/api/v1/customer/me")
-    suspend fun deleteCustomer(): ApiEnvelope<AccountDeleteDto>
-    @GET("/api/v1/customer/wallet")
-    suspend fun wallet(): ApiEnvelope<WalletDto>
-    @GET("/api/v1/customer/places")
-    suspend fun savedPlaces(): ApiEnvelope<List<SavedPlaceDto>>
-    @PUT("/api/v1/customer/places/{slot}")
-    suspend fun savePlace(@Path("slot") slot: String, @Body body: SavedPlaceRequest): ApiEnvelope<SavedPlaceDto>
-    @DELETE("/api/v1/customer/places/{id}")
-    suspend fun deletePlace(@Path("id") id: String): ApiEnvelope<PlaceDeleteDto>
-    @GET("/api/v1/customer/nearby-drivers")
-    suspend fun nearbyDrivers(@Query("vehicleType") vehicleType: String? = null): ApiEnvelope<List<NearbyDriverDto>>
-    @POST("/api/v1/support/tickets")
-    suspend fun createSupportTicket(@Body body: SupportTicketRequest): ApiEnvelope<SupportTicketDto>
+    @POST("/api/v1/auth/request-code") suspend fun requestCode(@Body body: OtpRequest): ApiEnvelope<OtpResponse>
+    @POST("/api/v1/auth/verify-code") suspend fun verifyCode(@Body body: VerifyOtpRequest): ApiEnvelope<VerifySessionResponse>
+    @POST("/api/v1/auth/google") suspend fun signInWithGoogle(@Body body: GoogleAuthRequest): ApiEnvelope<GoogleSessionResponse>
+    @GET("/api/v1/update") suspend fun latestUpdate(@Query("currentCode") currentCode: Int, @Query("abi") abi: String): ApiEnvelope<AppUpdateDto>
+    @GET("/api/v1/catalog/vehicle-types") suspend fun vehicleTypes(): ApiEnvelope<List<VehicleTypeDto>>
+    @GET("/api/v1/trips/estimate") suspend fun estimate(@Query("pickup") pickup: String): ApiEnvelope<FareEstimate>
+    @GET("/api/v1/trips") suspend fun trips(@Query("customerId") customerId: String? = null): ApiEnvelope<List<Trip>>
+    @POST("/api/v1/trips") suspend fun createTrip(@Body body: TripRequest): ApiEnvelope<Trip>
+    @GET("/api/v1/trips/{id}") suspend fun trip(@Path("id") id: String): ApiEnvelope<Trip>
+    @GET("/api/v1/trips/{id}/tracking") suspend fun tripTracking(@Path("id") id: String): ApiEnvelope<TripTrackingDto>
+    @PATCH("/api/v1/trips/{id}/status") suspend fun updateTripStatus(@Path("id") id: String, @Body body: TripStatusRequest): ApiEnvelope<Trip>
+    @POST("/api/v1/trips/{id}/cancel") suspend fun cancelTrip(@Path("id") id: String, @Body body: CancelTripRequest): ApiEnvelope<Trip>
+    @GET("/api/v1/trips/{id}/messages") suspend fun tripMessages(@Path("id") id: String, @Query("after") after: Long = 0L): ApiEnvelope<List<TripMessageDto>>
+    @POST("/api/v1/trips/{id}/messages") suspend fun sendTripMessage(@Path("id") id: String, @Body body: TripMessageRequest): ApiEnvelope<TripMessageDto>
+    @GET("/api/v1/places/search") suspend fun searchPlaces(@Query("q") query: String): ApiEnvelope<List<PlaceSearchDto>>
+    @GET("/api/v1/notifications") suspend fun notifications(@Query("userId") userId: String, @Query("limit") limit: Int = 50): ApiEnvelope<List<NotificationDto>>
+    @PATCH("/api/v1/notifications/{id}/read") suspend fun markNotificationRead(@Path("id") id: String, @Body body: MarkNotificationReadRequest): ApiEnvelope<NotificationReadDto>
+    @POST("/api/v1/notifications/device-token") suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): ApiEnvelope<DeviceTokenResponse>
+    @GET("/api/v1/customer/me") suspend fun customerMe(): ApiEnvelope<CustomerProfileDto>
+    @PATCH("/api/v1/customer/me") suspend fun updateCustomer(@Body body: CustomerProfileUpdateRequest): ApiEnvelope<CustomerProfileDto>
+    @DELETE("/api/v1/customer/me") suspend fun deleteCustomer(): ApiEnvelope<AccountDeleteDto>
+    @GET("/api/v1/customer/wallet") suspend fun wallet(): ApiEnvelope<WalletDto>
+    @GET("/api/v1/customer/places") suspend fun savedPlaces(): ApiEnvelope<List<SavedPlaceDto>>
+    @PUT("/api/v1/customer/places/{slot}") suspend fun savePlace(@Path("slot") slot: String, @Body body: SavedPlaceRequest): ApiEnvelope<SavedPlaceDto>
+    @DELETE("/api/v1/customer/places/{id}") suspend fun deletePlace(@Path("id") id: String): ApiEnvelope<PlaceDeleteDto>
+    @GET("/api/v1/customer/nearby-drivers") suspend fun nearbyDrivers(@Query("vehicleType") vehicleType: String? = null): ApiEnvelope<List<NearbyDriverDto>>
+    @POST("/api/v1/support/tickets") suspend fun createSupportTicket(@Body body: SupportTicketRequest): ApiEnvelope<SupportTicketDto>
+    @GET("/api/v1/support/tickets") suspend fun supportTickets(): ApiEnvelope<List<SupportTicketDto>>
 }
 
 data class AppUpdateDto(val updateAvailable: Boolean, val versionName: String = "", val versionCode: Int = 0, val releaseNotes: String = "", val publishedAt: String? = null, val mandatory: Boolean = false, val apk: AppUpdateApkDto? = null)
@@ -77,7 +51,6 @@ data class TripTrackingDto(val tripId: String, val status: String, val driver: D
 data class PlaceSearchDto(val id: String, val name: String, val address: String, val coordinates: Coordinates)
 data class NotificationDto(val id: String, val title: String, val body: String, val type: String = "trip", val tripId: String? = null, val read: Boolean = false, val createdAt: Long = 0L)
 data class MarkNotificationReadRequest(val userId: String)
-data class NotificationReadDto(val id: String, val read: Boolean = false)
 data class DeviceTokenRequest(val token: String)
 data class DeviceTokenResponse(val registered: Boolean, val tokenCount: Int = 0)
 data class CustomerProfileDto(val id: String, val name: String = "", val phone: String = "", val email: String = "", val picture: String = "", val walletBalance: Long = 0L, val currency: String = "SYP")
