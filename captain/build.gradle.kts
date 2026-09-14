@@ -56,6 +56,8 @@ android {
 
     sourceSets["main"].java.exclude(
         "**/CaptainActivity.kt",
+        "**/CaptainActivityV2.kt",
+        "**/CaptainHomeV3Fixed.kt",
         "**/CaptainEarningsV2.kt"
     )
 }
