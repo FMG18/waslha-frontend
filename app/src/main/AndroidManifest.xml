@@ -22,7 +22,9 @@
         <activity android:name=".UpdateGateActivity" android:exported="false" />
         <activity android:name=".AuthActivity" android:exported="false" />
         <activity android:name=".GoogleSignInActivity" android:exported="false" />
+        <activity android:name=".FeatureHostActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".TaxiBookingActivity" android:exported="false" />
         <activity android:name=".TripResumeActivity" android:exported="false" />
         <activity android:name=".WaslhaCustomerActivity" android:exported="false" />
         <service
