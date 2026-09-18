@@ -193,9 +193,6 @@ fun WaslhaRideMap(
                     onDestinationPicked(Coordinates(clickedPoint.latitude(), clickedPoint.longitude()))
                     true
                 },
-                onMapIdleListener = {
-                    if (searchOpen.not()) pickMapCenter()
-                }
             ) {
                 routeResult?.let { result ->
                     if (result.points.size >= 2) {
@@ -236,7 +233,7 @@ fun WaslhaRideMap(
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                         Text(if (destination == null) "ابحث عن وجهتك" else "الوجهة محددة", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color(0xFF10201B))
-                        Text(if (destination == null) "ابحث باسم المكان أو حرّك الخريطة" else "يمكنك البحث أو تحريك الخريطة لتغيير الوجهة", fontSize = 9.sp, color = Color(0xFF72807B))
+                        Text(if (destination == null) "ابحث باسم المكان أو حرّك الخريطة" else "يمكنك البحث أو الضغط على المكان المطلوب لتغيير الوجهة", fontSize = 9.sp, color = Color(0xFF72807B))
                     }
                     Icon(Icons.Default.LocationOn, null, tint = Color(0xFF087F5B), modifier = Modifier.size(20.dp))
                 }
@@ -267,7 +264,7 @@ fun WaslhaRideMap(
                         }
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF4F8F6)).padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.MyLocation, null, tint = Color(0xFF087F5B), modifier = Modifier.size(14.dp))
-                            Text("حرّك الخريطة حتى يصبح المؤشر الأحمر فوق المكان المطلوب", Modifier.padding(horizontal = 6.dp), fontSize = 9.sp, color = Color(0xFF6D7A75))
+                            Text("اضغط على المكان المطلوب على الخريطة أو استخدم البحث", Modifier.padding(horizontal = 6.dp), fontSize = 9.sp, color = Color(0xFF6D7A75))
                         }
                     }
                 }
