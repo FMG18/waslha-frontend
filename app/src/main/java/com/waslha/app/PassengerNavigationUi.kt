@@ -56,7 +56,7 @@ private val NavDanger = Color(0xFFB42318)
 private val NavLine = Color(0xFFDDE5E1)
 
 private fun launchFeature(context: Context, screen: String) {
-    context.startActivity(Intent(context, FeatureHostActivity::class.java).putExtra("screen", screen))
+    context.startActivity(Intent(context, WaslhaCustomerActivity::class.java).putExtra("customer_screen", screen))
 }
 
 @Composable
