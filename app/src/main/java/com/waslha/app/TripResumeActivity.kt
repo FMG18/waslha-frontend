@@ -110,7 +110,7 @@ class TripResumeActivity : ComponentActivity() {
     }
 
     private fun openTaxi() {
-        startActivity(Intent(this, TaxiBookingActivity::class.java))
+        startActivity(Intent(this, WaslhaCustomerActivity::class.java))
         finish()
     }
 
