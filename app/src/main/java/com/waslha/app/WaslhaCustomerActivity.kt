@@ -94,7 +94,7 @@ private val CWhite = Color.White
 private val CDanger = Color(0xFFB42318)
 private val CPurple = Color(0xFF6F4DBA)
 
-sealed interface CustomerPage { data object Home : CustomerPage; data object Trips : CustomerPage; data object Profile : CustomerPage; data object Settings : CustomerPage; data object Notifications : CustomerPage; data object Payments : CustomerPage; data object SavedPlaces : CustomerPage; data object Support : CustomerPage; data object About : CustomerPage; data object EditProfile : CustomerPage; data object Map : CustomerPage }
+sealed interface CustomerPage { data object Home : CustomerPage; data object Trips : CustomerPage; data object Profile : CustomerPage; data object Settings : CustomerPage; data object Notifications : CustomerPage; data object Payments : CustomerPage; data object SavedPlaces : CustomerPage; data object Support : CustomerPage; data object About : CustomerPage; data object EditProfile : CustomerPage; data object Security : CustomerPage; data object Map : CustomerPage }
 
 data class V2Destination(val title: String, val subtitle: String, val coordinates: Coordinates)
 data class V2Vehicle(val id: String, val title: String, val subtitle: String, val multiplier: Double)
@@ -105,16 +105,17 @@ class WaslhaCustomerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); ApiProvider.init(this)
         val sessionStore = SessionStore(this); val locationProvider = LocationProvider(this)
-        setContent { WaslhaTheme { WaslhaCustomerApp(sessionStore, locationProvider) { sessionStore.clear(); finish() } } }
+        val initialScreen = intent.getStringExtra("customer_screen")
+        setContent { WaslhaTheme { WaslhaCustomerApp(sessionStore, locationProvider, initialScreen) { sessionStore.clear(); finish() } } }
     }
 }
 
 @Composable
-private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: LocationProvider, onLogout: () -> Unit) {
+private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: LocationProvider, initialScreen: String? = null, onLogout: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { TripRepository(ApiProvider.api) }
-    var page by remember { mutableStateOf<CustomerPage>(CustomerPage.Home) }
+    var page by remember { mutableStateOf<CustomerPage>(customerPageFromIntent(initialScreen)) }
     var pickup by remember { mutableStateOf<Coordinates?>(null) }
     var pickupLabel by remember { mutableStateOf("جاري تحديد موقعك…") }
     var destination by remember { mutableStateOf<V2Destination?>(null) }
@@ -168,6 +169,15 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
                 estimate = FareEstimate(km, (km * 3.0).toInt().coerceAtLeast(3), "ل.س", (2500 + km * 1200 * vehicle.multiplier).toInt())
             }
         estimateLoading = false
+    }
+
+    LaunchedEffect(sessionStore.activeTripId) {
+        val activeId = sessionStore.activeTripId ?: return@LaunchedEffect
+        repo.get(activeId).onSuccess { loaded ->
+            trip = loaded
+        }.onFailure {
+            if (error == null) error = it.message ?: "تعذر استعادة الرحلة"
+        }
     }
 
     LaunchedEffect(page) {
@@ -224,6 +234,7 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
             CustomerPage.Support -> CustomerSupportV2 { page = CustomerPage.Profile }
             CustomerPage.About -> CustomerSubPage("عن وصلها", { page = CustomerPage.Profile }) { AboutPage() }
             CustomerPage.EditProfile -> CustomerEditProfileV2(sessionStore, { page = CustomerPage.Profile }) { page = CustomerPage.Profile }
+            CustomerPage.Security -> CustomerSecurityV2(sessionStore, { page = CustomerPage.Profile }, onLogout)
             CustomerPage.Map -> MapDestinationPage(pickup ?: Coordinates(33.5138, 36.2765), destination?.coordinates, { page = CustomerPage.Home }) { coords -> destination = V2Destination("الموقع المحدد", "من الخريطة", coords); page = CustomerPage.Home }
         }
         if (trip != null && page != CustomerPage.Map) {
@@ -231,6 +242,82 @@ private fun WaslhaCustomerApp(sessionStore: SessionStore, locationProvider: Loca
                 val id = trip?.id ?: return@ActiveTripCardOverlay
                 scope.launch { repo.cancel(id, "إلغاء من الراكب").onSuccess { trip = it } }
             }
+        }
+    }
+}
+
+private fun customerPageFromIntent(screen: String?): CustomerPage = when (screen) {
+    "account" -> CustomerPage.Profile
+    "settings" -> CustomerPage.Settings
+    "places" -> CustomerPage.SavedPlaces
+    "payments" -> CustomerPage.Payments
+    "notifications" -> CustomerPage.Notifications
+    "security" -> CustomerPage.Security
+    "about" -> CustomerPage.About
+    "support" -> CustomerPage.Support
+    "rating" -> CustomerPage.Trips
+    else -> CustomerPage.Profile
+}
+
+@Composable
+private fun CustomerSecurityV2(
+    session: SessionStore,
+    onBack: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().background(CBackground).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("رجوع", color = CPrimary, fontWeight = FontWeight.Bold) }
+            Spacer(Modifier.weight(1f))
+            Text("الخصوصية والأمان", color = CInk, fontSize = 23.sp, fontWeight = FontWeight.Black)
+        }
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(CWhite),
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, CLine),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("حسابك", color = CMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    session.name?.trim().takeUnless { it.isNullOrBlank() } ?: "مستخدم وصلها",
+                    color = CInk,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    session.email?.trim().takeUnless { it.isNullOrBlank() }
+                        ?: session.phone?.trim().takeUnless { it.isNullOrBlank() }
+                        ?: "لا توجد بيانات اتصال إضافية",
+                    color = CMuted,
+                    fontSize = 11.sp
+                )
+            }
+        }
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(CSoft),
+            shape = RoundedCornerShape(22.dp),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("حماية الجلسة", color = CPrimaryDark, fontWeight = FontWeight.Black)
+                Text("تبقى بيانات تسجيل الدخول داخل جلسة التطبيق ولا يتم عرض الرمز السري.", color = CMuted, fontSize = 11.sp)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(17.dp)
+        ) {
+            Icon(Icons.Default.Logout, null, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.size(8.dp))
+            Text("تسجيل الخروج", fontWeight = FontWeight.Black)
         }
     }
 }
